@@ -637,7 +637,7 @@ HTML;
         );
     }
 
-    public function chatWithSmolLM(string $message, string $systemPrompt = '', string $model = 'qwen2.5:0.5b'): ?string
+    public function chatWithSmolLM(string $message, string $systemPrompt = '', string $model = 'qwen2:0.5b'): ?string
     {
         if ($this->option('driver') === 'python') {
             return $this->chatWithSmolLMPython($message, $systemPrompt, $model);
