@@ -679,6 +679,9 @@ HTML;
             'messages' => $messages,
             'options'  => [
                 'temperature' => 0.0,
+                'num_ctx'     => 512,
+                'num_thread'  => 1,
+                'num_predict' => 20,
             ],
             'stream'   => false,
         ]);
