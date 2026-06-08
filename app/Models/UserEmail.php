@@ -6,5 +6,5 @@ use Illuminate\Database\Eloquent\Model;
 
 class UserEmail extends Model
 {
-    protected $table = 'NTOS_user_email';
+    protected $table = 'user_email';
 }

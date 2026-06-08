@@ -13,7 +13,7 @@ use App\Models\TicketData;
 use App\Models\FormEntryValues;
 
 #[Signature('app:ticket-categorization {--from-json= : Ruta al JSON de tickets de prueba (omite escritura en BD)} {--driver=api : Driver de inferencia: api (HTTP local) o python (subprocess ollama SDK)}')]
-#[Description('Categoriza tickets usando smolLM2 via Ollama')]
+#[Description('Categoriza tickets usando Qwen2.5 via Ollama')]
 class TicketCategorizationCommand extends Command
 {
     /**
@@ -80,14 +80,14 @@ class TicketCategorizationCommand extends Command
 
             // Detección por keywords antes de llamar a la IA
             $matchedByKeyword = null;
-            foreach ($keywords as $categoryName => $words) {
+            /*foreach ($keywords as $categoryName => $words) {
                 foreach ($words as $word) {
                     if (str_contains($textoLower, $word)) {
                         $matchedByKeyword = $categories->first(fn($cat) => $cat->topic === $categoryName);
                         break 2;
                     }
                 }
-            }
+            }*/
 
             if ($matchedByKeyword) {
                 $this->line("Ticket #{$ticket->ticket_id}: categorizado por keyword → \"{$matchedByKeyword->topic}\"");
@@ -97,7 +97,7 @@ class TicketCategorizationCommand extends Command
 
                 $userPrompt = "Mensaje: \"{$texto}\"\n\nCategorías disponibles (elige exactamente una):\n{$categoriasList}\n\nNombres válidos: {$categoryNames}\n\nResponde solo con uno de estos nombres exactos: {$categoryNames}";
 
-                $this->line("Ticket #{$ticket->ticket_id}: consultando a smolLM2...");
+                $this->line("Ticket #{$ticket->ticket_id}: consultando a Qwen2.5...");
 
                 $response = $this->chatWithSmolLM($userPrompt, $systemPrompt);
 
@@ -200,13 +200,6 @@ class TicketCategorizationCommand extends Command
 
         $categoryNames = $categories->pluck('topic')->implode(', ');
 
-        $keywords = [
-            'Urgencia'    => ['urgencia', 'urgente', 'emergencia', 'crítico', 'critico', 'inmediato', 'inmediata', 'grave', 'riesgo', 'peligro', 'hackear', 'hackearon', 'hackeado', 'hackeo', 'hack', 'hacker', 'intrusión', 'intrusion', 'acceso no autorizado', 'brecha', 'vulnerabilidad', 'ataque', 'ciberataque', 'robo de datos', 'filtracion', 'filtración', 'comprometido', 'comprometida', 'base de datos comprometida', 'entraron al sistema', 'entraron a la base'],
-            'Auditorías'  => ['auditoría', 'auditoria', 'auditar', 'revisión', 'revision', 'control de calidad', 'cumplimiento', 'inspección', 'inspeccion', 'normativa'],
-            'Orientación' => ['orientación', 'orientacion', 'necesito ayuda', 'necesito información', 'necesito informacion', 'información', 'informacion', 'turno', 'consulta', 'cómo hago', 'como hago', 'dónde', 'donde', 'tramite', 'trámite', 'guía', 'guia'],
-            'Técnicas'    => ['técnica', 'tecnica', 'técnico', 'tecnico', 'sistema', 'red', 'firewall', 'software', 'hardware', 'configurar', 'configuración', 'configuracion', 'instalar', 'instalación', 'instalacion', 'equipo', 'computadora', 'servidor', 'error', 'falla', 'conectividad', 'internet', 'acceso', 'contraseña', 'password'],
-        ];
-
         $results   = [];
         $correct   = 0;
         $incorrect = 0;
@@ -225,84 +218,68 @@ class TicketCategorizationCommand extends Command
                 continue;
             }
 
-            $textoLower = mb_strtolower($texto);
+            // Siempre usa IA en modo JSON (sin detección por keywords)
+            $method  = 'AI';
+            $matched = null;
 
-            // Detección por keywords
-            $matchedByKeyword = null;
-            foreach ($keywords as $categoryName => $words) {
-                foreach ($words as $word) {
-                    if (str_contains($textoLower, $word)) {
-                        $matchedByKeyword = $categories->first(fn($cat) => $cat->topic === $categoryName);
-                        break 2;
+            $systemPrompt = "Eres un clasificador de tickets de ciberseguridad. Responde ÚNICAMENTE con una de estas 4 palabras: Orientación, Técnicas, Urgencia, Auditorías. No agregues nada más.";
+            $userPrompt   = "Mensaje: \"{$texto}\"\n\nCategorías disponibles (elige exactamente una):\n{$categoriasList}\n\nNombres válidos: {$categoryNames}\n\nResponde solo con uno de estos nombres exactos: {$categoryNames}";
+            
+            $this->line("Ticket #{$id}: consultando a Qwen2.5...");
+
+            $aiStart  = microtime(true);
+            $response = $this->chatWithSmolLM($userPrompt, $systemPrompt);
+            $aiTimeMs = round((microtime(true) - $aiStart) * 1000, 1);
+
+            if ($response === null) {
+                $this->error("Ticket #{$id}: no se pudo obtener respuesta de la IA.");
+                $results[] = [
+                    'id'         => $id,
+                    'preview'    => mb_substr($texto, 0, 60),
+                    'expected'   => $expected,
+                    'assigned'   => null,
+                    'method'     => $method,
+                    'ok'         => '✗',
+                    'time_ms'    => round((microtime(true) - $ticketStart) * 1000, 1),
+                    'ai_time_ms' => $aiTimeMs,
+                ];
+                $noMatch++;
+                continue;
+            }
+
+            $suggestedName = trim($response);
+            $matched       = $categories->first(fn($cat) => strcasecmp($cat->topic, $suggestedName) === 0);
+
+            if (!$matched) {
+                $bestScore = 0;
+                $bestMatch = null;
+                foreach ($categories as $cat) {
+                    similar_text(strtolower($suggestedName), strtolower($cat->topic), $percent);
+                    if ($percent > $bestScore) {
+                        $bestScore = $percent;
+                        $bestMatch = $cat;
                     }
+                }
+                if ($bestScore >= 70) {
+                    $matched = $bestMatch;
+                    $this->warn("Ticket #{$id} → Coincidencia aproximada ({$bestScore}%): \"{$suggestedName}\" → \"{$matched->topic}\"");
                 }
             }
 
-            if ($matchedByKeyword) {
-                $method  = 'keyword';
-                $matched = $matchedByKeyword;
-            } else {
-                $method = 'AI';
-
-                $systemPrompt = "Eres un clasificador de tickets de soporte para una clínica universitaria. Tu única tarea es leer el mensaje del paciente o usuario y responder ÚNICAMENTE con el nombre exacto de la categoría que mejor corresponda. No agregues explicaciones, signos de puntuación, ni texto adicional.";
-                $userPrompt   = "Mensaje: \"{$texto}\"\n\nCategorías disponibles (elige exactamente una):\n{$categoriasList}\n\nNombres válidos: {$categoryNames}\n\nResponde solo con uno de estos nombres exactos: {$categoryNames}";
-
-                $this->line("Ticket #{$id}: consultando a smolLM2...");
-
-                $aiStart  = microtime(true);
-                $response = $this->chatWithSmolLM($userPrompt, $systemPrompt);
-                $aiTimeMs = round((microtime(true) - $aiStart) * 1000, 1);
-
-                if ($response === null) {
-                    $this->error("Ticket #{$id}: no se pudo obtener respuesta de la IA.");
-                    $results[] = [
-                        'id'         => $id,
-                        'preview'    => mb_substr($texto, 0, 60),
-                        'expected'   => $expected,
-                        'assigned'   => null,
-                        'method'     => $method,
-                        'ok'         => '✗',
-                        'time_ms'    => round((microtime(true) - $ticketStart) * 1000, 1),
-                        'ai_time_ms' => $aiTimeMs,
-                    ];
-                    $noMatch++;
-                    continue;
-                }
-
-                $suggestedName = trim($response);
-                $matched       = $categories->first(fn($cat) => strcasecmp($cat->topic, $suggestedName) === 0);
-
-                if (!$matched) {
-                    $bestScore = 0;
-                    $bestMatch = null;
-                    foreach ($categories as $cat) {
-                        similar_text(strtolower($suggestedName), strtolower($cat->topic), $percent);
-                        if ($percent > $bestScore) {
-                            $bestScore = $percent;
-                            $bestMatch = $cat;
-                        }
-                    }
-                    if ($bestScore >= 70) {
-                        $matched = $bestMatch;
-                        $this->warn("Ticket #{$id} → Coincidencia aproximada ({$bestScore}%): \"{$suggestedName}\" → \"{$matched->topic}\"");
-                    }
-                }
-
-                if (!$matched) {
-                    $this->warn("Ticket #{$id} → Categoría no reconocida: \"{$suggestedName}\".");
-                    $results[] = [
-                        'id'         => $id,
-                        'preview'    => mb_substr($texto, 0, 60),
-                        'expected'   => $expected,
-                        'assigned'   => null,
-                        'method'     => $method,
-                        'ok'         => '✗',
-                        'time_ms'    => round((microtime(true) - $ticketStart) * 1000, 1),
-                        'ai_time_ms' => $aiTimeMs,
-                    ];
-                    $noMatch++;
-                    continue;
-                }
+            if (!$matched) {
+                $this->warn("Ticket #{$id} → Categoría no reconocida: \"{$suggestedName}\".");
+                $results[] = [
+                    'id'         => $id,
+                    'preview'    => mb_substr($texto, 0, 60),
+                    'expected'   => $expected,
+                    'assigned'   => null,
+                    'method'     => $method,
+                    'ok'         => '✗',
+                    'time_ms'    => round((microtime(true) - $ticketStart) * 1000, 1),
+                    'ai_time_ms' => $aiTimeMs,
+                ];
+                $noMatch++;
+                continue;
             }
 
             $isCorrect = $expected !== null && strcasecmp($matched->topic, $expected) === 0;
@@ -438,7 +415,7 @@ body{background:#f1f5f9;font-family:'Segoe UI',system-ui,sans-serif}
   <div class="row align-items-center">
     <div class="col">
       <h1 class="h3 fw-bold mb-1">Reporte de Categorización Automática de Tickets</h1>
-      <p class="mb-0 opacity-75 small">Clínica Universitaria · smolLM2 via Ollama · Laravel</p>
+      <p class="mb-0 opacity-75 small">Clínica Universitaria · Qwen2.5 via Ollama · Laravel</p>
     </div>
     <div class="col-auto text-end small">
       <div class="opacity-75 mb-2">Generado el<br><strong>__GENERATED_AT__</strong></div>
@@ -479,7 +456,7 @@ body{background:#f1f5f9;font-family:'Segoe UI',system-ui,sans-serif}
     <div class="kpi-sub">__KW_PCT__% · ~__KW_AVG__ ms/ticket</div>
   </div></div>
   <div class="col-6 col-md-3"><div class="kpi" style="border-color:#f97316">
-    <div class="kpi-lbl">Por IA (smolLM2)</div>
+    <div class="kpi-lbl">Por IA (Qwen2.5)</div>
     <div class="kpi-val" style="color:#f97316">__AI_N__</div>
     <div class="kpi-sub">__AI_PCT__% · ~__AI_AVG__ ms/ticket</div>
   </div></div>
@@ -573,7 +550,7 @@ body{background:#f1f5f9;font-family:'Segoe UI',system-ui,sans-serif}
 </div>
 
 <footer class="text-center text-muted small mt-4 pb-3">
-  Generado por <code>app:ticket-categorization</code> &nbsp;·&nbsp; smolLM2 via Ollama &nbsp;·&nbsp; Laravel
+  Generado por <code>app:ticket-categorization</code> &nbsp;·&nbsp; Qwen2.5 via Ollama &nbsp;·&nbsp; Laravel
 </footer>
 </div>
 
@@ -651,7 +628,7 @@ Chart.defaults.font.family="'Segoe UI',system-ui,sans-serif";
 new Chart(document.getElementById('cM'),{
   type:'doughnut',
   data:{
-    labels:['Keyword','IA (smolLM2)'],
+    labels:['Keyword','IA (Qwen2.5)'],
     datasets:[{data:[STATS.keyword_count,STATS.ai_count],backgroundColor:['#6366f1','#f97316'],borderWidth:2}]
   },
   options:{cutout:'60%',plugins:{legend:{position:'bottom',labels:{boxWidth:12}}}}
@@ -674,7 +651,7 @@ new Chart(document.getElementById('cP'),{
 new Chart(document.getElementById('cT'),{
   type:'bar',
   data:{
-    labels:['Keyword','IA (smolLM2)'],
+    labels:['Keyword','IA (Qwen2.5)'],
     datasets:[{label:'ms',data:[STATS.avg_keyword_time_ms,STATS.avg_ai_time_ms],backgroundColor:['#6366f1','#f97316'],borderRadius:4}]
   },
   options:{scales:{y:{ticks:{callback:v=>v+' ms'}}},plugins:{legend:{display:false}}}
@@ -723,7 +700,7 @@ HTML;
         );
     }
 
-    public function chatWithSmolLM(string $message, string $systemPrompt = '', string $model = 'smollm2:latest'): ?string
+    public function chatWithSmolLM(string $message, string $systemPrompt = '', string $model = 'qwen2.5:0.5b'): ?string
     {
         if ($this->option('driver') === 'python') {
             return $this->chatWithSmolLMPython($message, $systemPrompt, $model);
@@ -746,14 +723,14 @@ HTML;
         ]);
 
         if (!$response->successful()) {
-            Log::error('Error al conectar con smolLM2: ' . $response->body());
+            Log::error('Error al conectar con Qwen2.5: ' . $response->body());
             return null;
         }
 
         return $response->json('message.content');
     }
 
-    private function chatWithSmolLMPython(string $message, string $systemPrompt = '', string $model = 'smollm2:latest'): ?string
+    private function chatWithSmolLMPython(string $message, string $systemPrompt = '', string $model = 'qwen2.5:0.5b'): ?string
     {
         $scriptPath = base_path('scripts/smollm_classify.py');
 

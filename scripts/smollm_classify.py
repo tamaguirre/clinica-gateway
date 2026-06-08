@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Clasificador de tickets usando smolLM2 vía el SDK oficial de ollama.
+Clasificador de tickets usando Qwen2.5 vía el SDK oficial de ollama.
 
 Lee un JSON de stdin con el formato:
-    {"message": "...", "system": "...", "model": "smollm2:latest"}
+    {"message": "...", "system": "...", "model": "qwen2.5:0.5b"}
 
 Escribe únicamente la respuesta del modelo en stdout.
 
@@ -39,7 +39,7 @@ def main() -> None:
 
     message      = data.get("message", "")
     system_prompt = data.get("system", "")
-    model        = data.get("model", "smollm2:latest")
+    model        = data.get("model", "qwen2.5:0.5b")
 
     if not message:
         print("ERROR: el campo 'message' está vacío.", file=sys.stderr)

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class FormEntry extends Model
 {
-    protected $table = 'NTOS_form_entry';
+    protected $table = 'form_entry';
     public $timestamps = false;
 
     public function valueWithPriority()

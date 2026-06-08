@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Ticket extends Model
 {
-    protected $table = 'NTOS_ticket';
+    protected $table = 'ticket';
     protected $primaryKey = 'ticket_id';
     protected $guarded = [];
 
