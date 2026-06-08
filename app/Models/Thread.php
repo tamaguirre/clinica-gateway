@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Thread extends Model
 {
-    protected $table = 'ost_thread';
+    protected $table = 'NTOS_thread';
     
     public function firstEntry()
     {

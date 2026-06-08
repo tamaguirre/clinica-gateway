@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class TicketData extends Model
 {
-    protected $table = 'ost_ticket__cdata';
+    protected $table = 'NTOS_ticket__cdata';
     protected $primaryKey = 'ticket_id';
     public $timestamps = false;
     protected $guarded = [];

@@ -6,6 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class Topic extends Model
 {
-    protected $table = 'help_topic';
+    protected $table = 'NTOS_help_topic';
     protected $primaryKey = 'topic_id';
 }

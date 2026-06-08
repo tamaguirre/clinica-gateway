@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class UserData extends Model
 {
-    protected $table = 'ost_user__cdata';
+    protected $table = 'NTOS_user__cdata';
 
     // relations
 

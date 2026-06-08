@@ -14,7 +14,7 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
-    protected $table = 'ost_user';
+    protected $table = 'NTOS_user';
 
     // relations
 

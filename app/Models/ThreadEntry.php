@@ -6,5 +6,5 @@ use Illuminate\Database\Eloquent\Model;
 
 class ThreadEntry extends Model
 {
-    protected $table = 'ost_thread_entry';
+    protected $table = 'NTOS_thread_entry';
 }
