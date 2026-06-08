@@ -16,9 +16,6 @@ use App\Models\FormEntryValues;
 #[Description('Categoriza tickets usando Qwen2.5 via Ollama')]
 class TicketCategorizationCommand extends Command
 {
-    /**
-     * Execute the console command.
-     */
     public function handle()
     {
         $categories = Topic::query()
@@ -46,27 +43,6 @@ class TicketCategorizationCommand extends Command
 
         $this->info("Se encontraron {$tickets->count()} tickets. Categorizando...");
 
-        $categoryDescriptions = [
-            'Auditorías'  => 'Revisión de registros, control de calidad, cumplimiento normativo, inspección de procesos administrativos o clínicos.',
-            'Orientación' => 'Consultas generales, información sobre servicios, guía al paciente, trámites, turnos, dudas sobre atención.',
-            'Técnicas'    => 'Problemas con sistemas informáticos, redes, equipamiento, hardware, software, firewall, conectividad, infraestructura tecnológica.',
-            'Urgencia'    => 'Incidentes de ciberseguridad, accesos no autorizados, hackeos, brechas de datos, ataques informáticos, filtraciones, sistemas comprometidos, robo de información.',
-        ];
-
-        $categoriasList = $categories->map(function ($cat) use ($categoryDescriptions) {
-            $desc = $categoryDescriptions[$cat->topic] ?? '';
-            return "- {$cat->topic}" . ($desc ? ": {$desc}" : '');
-        })->implode("\n");
-
-        $categoryNames = $categories->pluck('topic')->implode(', ');
-
-        $keywords = [
-            'Urgencia'   => ['urgencia', 'urgente', 'emergencia', 'crítico', 'critico', 'inmediato', 'inmediata', 'grave', 'riesgo', 'peligro', 'hackear', 'hackearon', 'hackeado', 'hackeo', 'hack', 'hacker', 'intrusión', 'intrusion', 'acceso no autorizado', 'brecha', 'vulnerabilidad', 'ataque', 'ciberataque', 'robo de datos', 'filtracion', 'filtración', 'comprometido', 'comprometida', 'base de datos comprometida', 'entraron al sistema', 'entraron a la base'],
-            'Auditorías' => ['auditoría', 'auditoria', 'auditar', 'revisión', 'revision', 'control de calidad', 'cumplimiento', 'inspección', 'inspeccion', 'normativa'],
-            'Orientación' => ['orientación', 'orientacion', 'necesito ayuda', 'necesito información', 'necesito informacion', 'información', 'informacion', 'turno', 'consulta', 'cómo hago', 'como hago', 'dónde', 'donde', 'tramite', 'trámite', 'guía', 'guia'],
-            'Técnicas'   => ['técnica', 'tecnica', 'técnico', 'tecnico', 'sistema', 'red', 'firewall', 'software', 'hardware', 'configurar', 'configuración', 'configuracion', 'instalar', 'instalación', 'instalacion', 'equipo', 'computadora', 'servidor', 'error', 'falla', 'conectividad', 'internet', 'acceso', 'contraseña', 'password'],
-        ];
-
         foreach ($tickets as $ticket) {
             $entry = $ticket->thread?->firstEntry;
 
@@ -78,60 +54,47 @@ class TicketCategorizationCommand extends Command
             $texto = strip_tags($entry->body ?? '');
             $textoLower = mb_strtolower($texto);
 
-            // Detección por keywords antes de llamar a la IA
-            $matchedByKeyword = null;
-            /*foreach ($keywords as $categoryName => $words) {
-                foreach ($words as $word) {
-                    if (str_contains($textoLower, $word)) {
-                        $matchedByKeyword = $categories->first(fn($cat) => $cat->topic === $categoryName);
-                        break 2;
+            $systemPrompt = "Eres un clasificador de tickets de soporte. Responde ÚNICAMENTE con una de estas 4 palabras exactas: Orientación, Técnicas, Urgencia, Auditorías.\n\n" .
+                            "REGLAS ESTRICTAS DE CLASIFICACIÓN:\n" .
+                            "- Orientación: Dudas, solicitud de manuales, pasos a seguir o recuperación de contraseñas.\n" .
+                            "- Técnicas: Fallos de sistema, impresoras, errores de red o aplicaciones que no abren.\n" .
+                            "- Urgencia: EXCLUSIVO para incidentes críticos de ciberseguridad (hackeos, ransomware, robo de datos) o caída total de infraestructura.\n" .
+                            "- Auditorías: Solicitud de revisión de logs, historiales, trazabilidad o control.";
+            
+            // El usuario ahora solo envía el texto limpio, sin instrucciones extra.
+            $userPrompt = $texto;
+
+            $this->line("Ticket #{$ticket->ticket_id}: consultando a Qwen2.5...");
+
+            $response = $this->chatWithSmolLM($userPrompt, $systemPrompt);
+
+            if ($response === null) {
+                $this->error("Ticket #{$ticket->ticket_id}: no se pudo obtener respuesta.");
+                continue;
+            }
+
+            $suggestedName = trim($response);
+            $matched = $categories->first(fn($cat) => strcasecmp($cat->topic, $suggestedName) === 0);
+
+            if (!$matched) {
+                $bestScore = 0;
+                $bestMatch = null;
+                foreach ($categories as $cat) {
+                    similar_text(strtolower($suggestedName), strtolower($cat->topic), $percent);
+                    if ($percent > $bestScore) {
+                        $bestScore = $percent;
+                        $bestMatch = $cat;
                     }
                 }
-            }*/
-
-            if ($matchedByKeyword) {
-                $this->line("Ticket #{$ticket->ticket_id}: categorizado por keyword → \"{$matchedByKeyword->topic}\"");
-                $matched = $matchedByKeyword;
-            } else {
-                $systemPrompt = "Eres un clasificador de tickets de soporte para una clínica universitaria. Tu única tarea es leer el mensaje del paciente o usuario y responder ÚNICAMENTE con el nombre exacto de la categoría que mejor corresponda. No agregues explicaciones, signos de puntuación, ni texto adicional.";
-
-                $userPrompt = "Mensaje: \"{$texto}\"\n\nCategorías disponibles (elige exactamente una):\n{$categoriasList}\n\nNombres válidos: {$categoryNames}\n\nResponde solo con uno de estos nombres exactos: {$categoryNames}";
-
-                $this->line("Ticket #{$ticket->ticket_id}: consultando a Qwen2.5...");
-
-                $response = $this->chatWithSmolLM($userPrompt, $systemPrompt);
-
-                if ($response === null) {
-                    $this->error("Ticket #{$ticket->ticket_id}: no se pudo obtener respuesta.");
-                    continue;
+                if ($bestScore >= 70) {
+                    $matched = $bestMatch;
+                    $this->warn("Ticket #{$ticket->ticket_id} → Coincidencia aproximada ({$bestScore}%): \"{$suggestedName}\" → \"{$matched->topic}\"");
                 }
+            }
 
-                $suggestedName = trim($response);
-
-                // Buscar coincidencia exacta (ignorando mayúsculas)
-                $matched = $categories->first(fn($cat) => strcasecmp($cat->topic, $suggestedName) === 0);
-
-                // Si no hay match exacto, buscar la categoría con mayor similitud
-                if (!$matched) {
-                    $bestScore = 0;
-                    $bestMatch = null;
-                    foreach ($categories as $cat) {
-                        similar_text(strtolower($suggestedName), strtolower($cat->topic), $percent);
-                        if ($percent > $bestScore) {
-                            $bestScore = $percent;
-                            $bestMatch = $cat;
-                        }
-                    }
-                    if ($bestScore >= 70) {
-                        $matched = $bestMatch;
-                        $this->warn("Ticket #{$ticket->ticket_id} → Coincidencia aproximada ({$bestScore}%): \"{$suggestedName}\" → \"{$matched->topic}\"");
-                    }
-                }
-
-                if (!$matched) {
-                    $this->warn("Ticket #{$ticket->ticket_id} → Categoría no reconocida: \"{$suggestedName}\". No se actualizó.");
-                    continue;
-                }
+            if (!$matched) {
+                $this->warn("Ticket #{$ticket->ticket_id} → Categoría no reconocida: \"{$suggestedName}\". No se actualizó.");
+                continue;
             }
 
             $ticket->update([
@@ -159,10 +122,6 @@ class TicketCategorizationCommand extends Command
         return Command::SUCCESS;
     }
 
-    // -------------------------------------------------------------------------
-    // Modo JSON: procesa un archivo sin escribir en la BD
-    // -------------------------------------------------------------------------
-
     private function processFromJson(string $path, $categories): int
     {
         $fullPath = str_starts_with($path, '/') ? $path : base_path($path);
@@ -186,20 +145,6 @@ class TicketCategorizationCommand extends Command
         $globalStart = microtime(true);
         $cpuStart    = getrusage();
 
-        $categoryDescriptions = [
-            'Auditorías'  => 'Revisión de registros, control de calidad, cumplimiento normativo, inspección de procesos administrativos o clínicos.',
-            'Orientación' => 'Consultas generales, información sobre servicios, guía al paciente, trámites, turnos, dudas sobre atención.',
-            'Técnicas'    => 'Problemas con sistemas informáticos, redes, equipamiento, hardware, software, firewall, conectividad, infraestructura tecnológica.',
-            'Urgencia'    => 'Incidentes de ciberseguridad, accesos no autorizados, hackeos, brechas de datos, ataques informáticos, filtraciones, sistemas comprometidos, robo de información.',
-        ];
-
-        $categoriasList = $categories->map(function ($cat) use ($categoryDescriptions) {
-            $desc = $categoryDescriptions[$cat->topic] ?? '';
-            return "- {$cat->topic}" . ($desc ? ": {$desc}" : '');
-        })->implode("\n");
-
-        $categoryNames = $categories->pluck('topic')->implode(', ');
-
         $results   = [];
         $correct   = 0;
         $incorrect = 0;
@@ -218,12 +163,17 @@ class TicketCategorizationCommand extends Command
                 continue;
             }
 
-            // Siempre usa IA en modo JSON (sin detección por keywords)
             $method  = 'AI';
             $matched = null;
 
-            $systemPrompt = "Eres un clasificador de tickets de ciberseguridad. Responde ÚNICAMENTE con una de estas 4 palabras: Orientación, Técnicas, Urgencia, Auditorías. No agregues nada más.";
-            $userPrompt   = "Mensaje: \"{$texto}\"\n\nCategorías disponibles (elige exactamente una):\n{$categoriasList}\n\nNombres válidos: {$categoryNames}\n\nResponde solo con uno de estos nombres exactos: {$categoryNames}";
+            $systemPrompt = "Eres un clasificador de tickets de soporte. Responde ÚNICAMENTE con una de estas 4 palabras exactas: Orientación, Técnicas, Urgencia, Auditorías.\n\n" .
+                            "REGLAS ESTRICTAS DE CLASIFICACIÓN:\n" .
+                            "- Orientación: Dudas, solicitud de manuales, pasos a seguir o recuperación de contraseñas.\n" .
+                            "- Técnicas: Fallos de sistema, impresoras, errores de red o aplicaciones que no abren.\n" .
+                            "- Urgencia: EXCLUSIVO para incidentes críticos de ciberseguridad (hackeos, ransomware, robo de datos) o caída total de infraestructura.\n" .
+                            "- Auditorías: Solicitud de revisión de logs, historiales, trazabilidad o control.";
+            
+            $userPrompt = $texto;
             
             $this->line("Ticket #{$id}: consultando a Qwen2.5...");
 
@@ -303,7 +253,6 @@ class TicketCategorizationCommand extends Command
             ];
         }
 
-        // Resumen por categoría
         $this->newLine();
         $this->info('=== Resumen por categoría ===');
         $byCategory = collect($results)->groupBy('assigned');
@@ -322,7 +271,6 @@ class TicketCategorizationCommand extends Command
             $this->info("Precisión global: {$correct}/{$totalEvaluados} ({$accuracy}%)");
         }
 
-        // Estadísticas finales
         $globalEnd  = microtime(true);
         $cpuEnd     = getrusage();
         $resultsCol = collect($results);
@@ -356,12 +304,10 @@ class TicketCategorizationCommand extends Command
             ),
         ];
 
-        // Guardar resultados en JSON
         $jsonOutput = storage_path('app/tickets-results.json');
         file_put_contents($jsonOutput, json_encode($results, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
         $this->info("Resultados JSON guardados en: {$jsonOutput}");
 
-        // Generar reporte HTML
         $htmlOutput = storage_path('app/tickets-report.html');
         file_put_contents($htmlOutput, $this->generateHtmlReport($results, $stats));
         $this->info("Reporte HTML guardado en: {$htmlOutput}");
@@ -369,12 +315,9 @@ class TicketCategorizationCommand extends Command
         return Command::SUCCESS;
     }
 
-    // -------------------------------------------------------------------------
-    // Generador de reporte HTML
-    // -------------------------------------------------------------------------
-
     private function generateHtmlReport(array $results, array $stats): string
     {
+        // ... (El contenido de tu reporte HTML queda exactamente igual)
         $statsJson  = json_encode($stats,   JSON_UNESCAPED_UNICODE);
         $resJson    = json_encode($results, JSON_UNESCAPED_UNICODE);
         $evaluated  = $stats['correct'] + $stats['incorrect'];
@@ -410,7 +353,6 @@ body{background:#f1f5f9;font-family:'Segoe UI',system-ui,sans-serif}
 <body>
 <div class="container-xl py-4">
 
-<!-- Header -->
 <div class="hdr">
   <div class="row align-items-center">
     <div class="col">
@@ -424,7 +366,6 @@ body{background:#f1f5f9;font-family:'Segoe UI',system-ui,sans-serif}
   </div>
 </div>
 
-<!-- KPI fila 1 -->
 <div class="row g-3 mb-3">
   <div class="col-6 col-md-3"><div class="kpi" style="border-color:#3b82f6">
     <div class="kpi-lbl">Tickets procesados</div>
@@ -448,7 +389,6 @@ body{background:#f1f5f9;font-family:'Segoe UI',system-ui,sans-serif}
   </div></div>
 </div>
 
-<!-- KPI fila 2 -->
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-3"><div class="kpi" style="border-color:#6366f1">
     <div class="kpi-lbl">Por keyword</div>
@@ -472,7 +412,6 @@ body{background:#f1f5f9;font-family:'Segoe UI',system-ui,sans-serif}
   </div></div>
 </div>
 
-<!-- Gráficos -->
 <div class="row g-3 mb-4">
   <div class="col-md-3"><div class="cht">
     <div class="stitle">Método de clasificación</div>
@@ -492,7 +431,6 @@ body{background:#f1f5f9;font-family:'Segoe UI',system-ui,sans-serif}
   </div></div>
 </div>
 
-<!-- Tabla resumen por categoría -->
 <div class="card border-0 shadow-sm mb-4">
   <div class="card-body">
     <div class="stitle">Resumen por categoría</div>
@@ -522,7 +460,6 @@ body{background:#f1f5f9;font-family:'Segoe UI',system-ui,sans-serif}
   </div>
 </div>
 
-<!-- Tabla de resultados individuales -->
 <div class="card border-0 shadow-sm">
   <div class="card-body">
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -712,13 +649,37 @@ HTML;
             $messages[] = ['role' => 'system', 'content' => $systemPrompt];
         }
 
+        // --- INICIO DE EJEMPLOS TRAMPA Y PATRONES (Few-Shot) ---
+        $messages[] = ['role' => 'user', 'content' => '¿Cómo activo el doble factor en mi correo?'];
+        $messages[] = ['role' => 'assistant', 'content' => 'Orientación'];
+
+        $messages[] = ['role' => 'user', 'content' => 'La impresora de farmacia no conecta a la red local'];
+        $messages[] = ['role' => 'assistant', 'content' => 'Técnicas'];
+
+        $messages[] = ['role' => 'user', 'content' => '¡Ayuda urgente! No puedo abrir el Excel y tengo que entregar un reporte.'];
+        $messages[] = ['role' => 'assistant', 'content' => 'Técnicas'];
+
+        $messages[] = ['role' => 'user', 'content' => 'Necesito urgente saber cómo resetear mi clave del portal desde casa.'];
+        $messages[] = ['role' => 'assistant', 'content' => 'Orientación'];
+
+        $messages[] = ['role' => 'user', 'content' => '¡Ataque de ransomware! Servidores encriptados y están robando datos'];
+        $messages[] = ['role' => 'assistant', 'content' => 'Urgencia'];
+
+        $messages[] = ['role' => 'user', 'content' => 'Solicito el registro y control de logs del directorio activo'];
+        $messages[] = ['role' => 'assistant', 'content' => 'Auditorías'];
+        // --- FIN DE EJEMPLOS ---
+
+        // Ticket real enviado al final
         $messages[] = ['role' => 'user', 'content' => $message];
 
-        $response = Http::withHeaders([
+        $response = Http::timeout(240)->withHeaders([
             'Content-Type' => 'application/json',
         ])->post(config('services.ollama.url', 'http://localhost:11434') . '/api/chat', [
             'model'    => $model,
             'messages' => $messages,
+            'options'  => [
+                'temperature' => 0.0,
+            ],
             'stream'   => false,
         ]);
 
@@ -727,7 +688,7 @@ HTML;
             return null;
         }
 
-        return $response->json('message.content');
+        return trim($response->json('message.content'));
     }
 
     private function chatWithSmolLMPython(string $message, string $systemPrompt = '', string $model = 'qwen2.5:0.5b'): ?string
