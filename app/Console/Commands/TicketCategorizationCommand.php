@@ -209,7 +209,7 @@ class TicketCategorizationCommand extends Command
                 $this->error("Ticket #{$id}: no se pudo obtener respuesta de la IA.");
                 $results[] = [
                     'id'         => $id,
-                    'preview'    => mb_substr($texto, 0, 60),
+                    'preview'    => $texto,
                     'expected'   => $expected,
                     'assigned'   => null,
                     'method'     => $method,
@@ -244,7 +244,7 @@ class TicketCategorizationCommand extends Command
                 $this->warn("Ticket #{$id} → Categoría no reconocida: \"{$suggestedName}\".");
                 $results[] = [
                     'id'         => $id,
-                    'preview'    => mb_substr($texto, 0, 60),
+                    'preview'    => $texto,
                     'expected'   => $expected,
                     'assigned'   => null,
                     'method'     => $method,
@@ -268,7 +268,7 @@ class TicketCategorizationCommand extends Command
 
             $results[] = [
                 'id'         => $id,
-                'preview'    => mb_substr($texto, 0, 60),
+                'preview'    => $texto,
                 'expected'   => $expected ?? '-',
                 'assigned'   => $matched->topic,
                 'method'     => $method,
@@ -566,7 +566,7 @@ function render(data){
   const okM={'\u2713':'<span class="oky">✓</span>','\u2717':'<span class="okn">✗</span>'};
   document.getElementById('resB').innerHTML=data.map(r=>
     `<tr><td class="text-muted">${r.id}</td>`+
-    `<td class="text-truncate" style="max-width:340px" title="${(r.preview||'').replace(/"/g,'&quot;')}">${r.preview||''}…</td>`+
+    `<td style="white-space:pre-wrap;word-break:break-word;max-width:480px;font-size:.82rem">${(r.preview||'').replace(/</g,'&lt;')}</td>`+
     `<td><small class="text-muted">${r.expected||'—'}</small></td>`+
     `<td style="color:${CLRS[r.assigned]||'#94a3b8'};font-weight:600">${r.assigned||'?'}</td>`+
     `<td><span class="badge ${r.method==='keyword'?'bkw':'bai'}">${r.method}</span></td>`+
