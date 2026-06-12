@@ -6,7 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Thread extends Model
 {
-    protected $table = 'thread';
+    protected $table   = 'thread';
+    protected $guarded = [];
     
     public function firstEntry()
     {

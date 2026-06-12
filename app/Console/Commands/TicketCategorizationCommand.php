@@ -12,7 +12,7 @@ use App\Models\Topic;
 use App\Models\TicketData;
 use App\Models\FormEntryValues;
 
-#[Signature('app:ticket-categorization {--from-json= : Ruta al JSON de tickets de prueba (omite escritura en BD)} {--driver=api : Driver de inferencia: api (HTTP local) o python (subprocess ollama SDK)}')]
+#[Signature('app:ticket-categorization {--from-json= : Ruta al JSON de tickets de prueba (omite escritura en BD)} {--driver=api : Driver de inferencia: api (HTTP local) o python (subprocess ollama SDK)} {--no-report : Omite la generación del reporte HTML (útil en tests)}')]
 #[Description('Categoriza tickets usando IA via Ollama')]
 class TicketCategorizationCommand extends Command
 {
@@ -333,9 +333,11 @@ class TicketCategorizationCommand extends Command
         file_put_contents($jsonOutput, json_encode($results, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
         $this->info("Resultados JSON guardados en: {$jsonOutput}");
 
-        $htmlOutput = storage_path('app/tickets-report.html');
-        file_put_contents($htmlOutput, $this->generateHtmlReport($results, $stats));
-        $this->info("Reporte HTML guardado en: {$htmlOutput}");
+        if (!$this->option('no-report')) {
+            $htmlOutput = storage_path('app/tickets-report.html');
+            file_put_contents($htmlOutput, $this->generateHtmlReport($results, $stats));
+            $this->info("Reporte HTML guardado en: {$htmlOutput}");
+        }
 
         return Command::SUCCESS;
     }
@@ -426,12 +428,12 @@ body{background:#f1f5f9;font-family:'Segoe UI',system-ui,sans-serif}
     <div class="kpi-sub">__AI_PCT__% · ~__AI_AVG__ ms/ticket</div>
   </div></div>
   <div class="col-6 col-md-3"><div class="kpi" style="border-color:#0ea5e9">
-    <div class="kpi-lbl">Memoria RAM (pico)</div>
+    <div class="kpi-lbl">Memoria RAM </div>
     <div class="kpi-val" style="color:#0ea5e9">__MEM__ MB</div>
     <div class="kpi-sub">memory_get_peak_usage()</div>
   </div></div>
   <div class="col-6 col-md-3"><div class="kpi" style="border-color:#64748b">
-    <div class="kpi-lbl">CPU — proceso PHP</div>
+    <div class="kpi-lbl">CPU </div>
     <div class="kpi-val" style="color:#64748b">__CPU_U__ ms</div>
     <div class="kpi-sub">usuario · __CPU_S__ ms sistema</div>
   </div></div>

@@ -2,11 +2,16 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class UserData extends Model
 {
-    protected $table = 'user__cdata';
+    use HasFactory;
+
+    protected $table        = 'user__cdata';
+    protected $primaryKey   = 'user_id';
+    public    $incrementing = false;
 
     // relations
 
