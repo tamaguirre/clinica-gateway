@@ -52,37 +52,12 @@ class TicketCategorizationCommand extends Command
             }
 
             $texto = strip_tags($entry->body ?? '');
-            $textoLower = mb_strtolower($texto);
-
-            $categoryNames = $categories->pluck('topic')->implode(', ');
-            $systemPrompt = "Eres un clasificador de tickets. Responde ÚNICAMENTE con el nombre de la categoría, sin descripciones, prefijos ni explicaciones.\n";
-            $systemPrompt .= "Tu tarea es leer el ticket y responder ÚNICAMENTE con el nombre de la categoría que mejor se ajuste.\n\n";
-            $systemPrompt .= "CATEGORÍAS PERMITIDAS: [{$categoryNames}]\n\n";
-            $systemPrompt .= "DEFINICIONES:\n";
-
-            foreach ($categories as $category) {
-                $topicName = $category->topic;
-                $cleanNotes = strip_tags($category->notes); 
-    
-                if (preg_match('/descripción:\s*(.*?)(?=keywords:|$)/is', $cleanNotes, $matches)) {
-                    $description = trim($matches[1]);
-                } else {
-                    $description = trim($cleanNotes); 
-                }
-
-                $systemPrompt .= "- {$topicName}: {$description}\n";
-            }
-
-            $systemPrompt .= "\nREGLA DE ORO: Responde solo el nombre exacto de la categoría. No repitas la definición.\n";
-            $systemPrompt .= "EJEMPLOS DE REFERENCIA:\n";
-            $systemPrompt .= "- 'No puedo entrar al sistema, olvidé mi clave' -> Orientación\n";
-            $systemPrompt .= "- 'La impresora hace un ruido raro y no imprime' -> Técnicas\n";
-            $systemPrompt .= "- 'Necesito el log de accesos de la semana pasada' -> Auditorías\n";
-            $systemPrompt .= "- 'Hay un virus bloqueando todos los archivos del servidor' -> Urgencia\n";
+            
+            // Construcción dinámica del prompt basada en BD o Config
+            $systemPrompt = $this->buildSystemPrompt($categories);
+            $userPrompt   = $texto;
 
             $systemPrompt = trim($systemPrompt);
-
-            $userPrompt = $texto;
 
             $this->line("Ticket #{$ticket->ticket_id}: consultando...");
 
@@ -216,34 +191,8 @@ class TicketCategorizationCommand extends Command
                 $method  = 'AI';
                 $matched = null;
 
-            $categoryNames = $categories->pluck('topic')->implode(', ');
-            $systemPrompt = "Eres un clasificador de tickets. Responde ÚNICAMENTE con el nombre de la categoría, sin descripciones, prefijos ni explicaciones.\n";
-            $systemPrompt .= "Tu tarea es leer el ticket y responder ÚNICAMENTE con el nombre de la categoría que mejor se ajuste.\n\n";
-            $systemPrompt .= "CATEGORÍAS PERMITIDAS: [{$categoryNames}]\n\n";
-            $systemPrompt .= "DEFINICIONES:\n";
+            $systemPrompt = $this->buildSystemPrompt($categories);
 
-            foreach ($categories as $category) {
-                $topicName = $category->topic;
-                $cleanNotes = strip_tags($category->notes); 
-    
-                if (preg_match('/descripción:\s*(.*?)(?=keywords:|$)/is', $cleanNotes, $matches)) {
-                    $description = trim($matches[1]);
-                } else {
-                    $description = trim($cleanNotes); 
-                }
-
-                $systemPrompt .= "- {$topicName}: {$description}\n";
-            }
-
-            $systemPrompt .= "\nREGLA DE ORO: Responde solo el nombre exacto de la categoría. No repitas la definición.\n";
-            $systemPrompt .= "EJEMPLOS DE REFERENCIA:\n";
-            $systemPrompt .= "- 'No puedo entrar al sistema, olvidé mi clave' -> Orientación\n";
-            $systemPrompt .= "- 'La impresora hace un ruido raro y no imprime' -> Técnicas\n";
-            $systemPrompt .= "- 'Necesito el log de accesos de la semana pasada' -> Auditorías\n";
-            $systemPrompt .= "- 'Hay un virus bloqueando todos los archivos del servidor' -> Urgencia\n";
-
-            $systemPrompt = trim($systemPrompt);
-            
             $userPrompt = $texto;
             
             $this->line("Ticket #{$id}: consultando...");
@@ -399,6 +348,14 @@ class TicketCategorizationCommand extends Command
         $resJson    = json_encode($results, JSON_UNESCAPED_UNICODE);
         $evaluated  = $stats['correct'] + $stats['incorrect'];
         $totalSec   = number_format($stats['total_time_ms'] / 1000, 2);
+
+        // Extraer categorías únicas presentes en los resultados para que el reporte sea dinámico
+        $categoriesInResults = collect($results)
+            ->pluck('assigned')
+            ->filter()
+            ->unique()
+            ->values();
+
         $kwPct      = $stats['total_tickets'] > 0
             ? round($stats['keyword_count'] / $stats['total_tickets'] * 100, 1) : 0;
         $aiPct      = $stats['total_tickets'] > 0
@@ -571,8 +528,8 @@ body{background:#f1f5f9;font-family:'Segoe UI',system-ui,sans-serif}
 <script>
 const STATS=__STATS__;
 const RESULTS=__RESULTS__;
-const CATS=['Orientación','Técnicas','Urgencia','Auditorías'];
-const CLRS={'Orientación':'#3b82f6','Técnicas':'#f59e0b','Urgencia':'#ef4444','Auditorías':'#10b981'};
+const CATS=__CATEGORIES_LIST__;
+const CLRS={'Orientación':'#3b82f6','Técnicas':'#f59e0b','Urgencia':'#ef4444','Auditorías':'#10b981','Redes':'#06b6d4','Default':'#94a3b8'};
 
 /* Estadísticas por categoría */
 function buildCS(data){
@@ -597,13 +554,14 @@ CATS.forEach(cat=>{
   const ev=s.correct+s.incorrect;
   const acc=ev>0?(s.correct/ev*100).toFixed(1)+'%':'—';
   const avgT=s.times.length>0?(s.times.reduce((a,b)=>a+b,0)/s.times.length).toFixed(1):'—';
-  const bar=ev>0?`<div class="progress mt-1" style="height:5px"><div class="progress-bar" style="width:${(s.correct/ev*100).toFixed(0)}%;background:${CLRS[cat]}"></div></div>`:'';
+  const color=CLRS[cat]||CLRS['Default'];
+  const bar=ev>0?`<div class="progress mt-1" style="height:5px"><div class="progress-bar" style="width:${(s.correct/ev*100).toFixed(0)}%;background:${color}"></div></div>`:'';
   document.getElementById('catBody').insertAdjacentHTML('beforeend',
-    `<tr><td><span class="badge text-white" style="background:${CLRS[cat]}">${cat}</span></td>`+
+    `<tr><td><span class="badge text-white" style="background:${color}">${cat}</span></td>`+
     `<td class="text-center fw-bold">${s.total}</td>`+
     `<td class="text-center text-success fw-bold">${s.correct}</td>`+
     `<td class="text-center text-danger">${s.incorrect}</td>`+
-    `<td style="min-width:120px"><span style="color:${CLRS[cat]};font-weight:600">${acc}</span>${bar}</td>`+
+    `<td style="min-width:120px"><span style="color:${color};font-weight:600">${acc}</span>${bar}</td>`+
     `<td class="text-center text-muted small">${avgT}</td></tr>`
   );
   fT+=s.total;fC+=s.correct;fI+=s.incorrect;
@@ -620,7 +578,7 @@ function render(data){
     `<tr><td class="text-muted">${r.id}</td>`+
     `<td style="white-space:pre-wrap;word-break:break-word;max-width:480px;font-size:.82rem">${(r.preview||'').replace(/</g,'&lt;')}</td>`+
     `<td><small class="text-muted">${r.expected||'—'}</small></td>`+
-    `<td style="color:${CLRS[r.assigned]||'#94a3b8'};font-weight:600">${r.assigned||'?'}</td>`+
+    `<td style="color:${CLRS[r.assigned]||CLRS['Default']};font-weight:600">${r.assigned||'?'}</td>`+
     `<td><span class="badge ${r.method==='keyword'?'bkw':'bai'}">${r.method}</span></td>`+
     `<td class="text-end text-muted small">${r.time_ms}</td>`+
     `<td class="text-center">${okM[r.ok]||'<span class="text-muted">—</span>'}</td></tr>`
@@ -655,7 +613,7 @@ new Chart(document.getElementById('cP'),{
     datasets:[{
       label:'Precisión (%)',
       data:CATS.map(c=>{const s=CS[c];const ev=s.correct+s.incorrect;return ev>0?+(s.correct/ev*100).toFixed(1):0;}),
-      backgroundColor:CATS.map(c=>CLRS[c]),
+      backgroundColor:CATS.map(c=>CLRS[c]||CLRS['Default']),
       borderRadius:4
     }]
   },
@@ -675,7 +633,7 @@ new Chart(document.getElementById('cD'),{
   type:'bar',
   data:{
     labels:CATS,
-    datasets:[{label:'Tickets',data:CATS.map(c=>CS[c]?.total||0),backgroundColor:CATS.map(c=>CLRS[c]),borderRadius:4}]
+    datasets:[{label:'Tickets',data:CATS.map(c=>CS[c]?.total||0),backgroundColor:CATS.map(c=>CLRS[c]||CLRS['Default']),borderRadius:4}]
   },
   options:{plugins:{legend:{display:false}}}
 });
@@ -697,6 +655,7 @@ HTML;
                 '__MEM__',          '__CPU_U__',    '__CPU_S__',
                 '__BADGE_MODEL__', '__BADGE_SOURCE__',
                 '__STATS__',        '__RESULTS__',
+                '__CATEGORIES_LIST__',
             ],
             [
                 $stats['generated_at'],   $stats['total_tickets'],       $stats['accuracy'],
@@ -707,9 +666,54 @@ HTML;
                 $stats['memory_peak_mb'], $stats['cpu_user_ms'],         $stats['cpu_sys_ms'],
                 $modelBadge,              $sourceBadge,
                 $statsJson,               $resJson,
+                $categoriesInResults->toJson(),
             ],
             $tpl
         );
+    }
+
+    private function buildSystemPrompt($categories): string
+    {
+        $categoryNames = $categories->pluck('topic')->implode(', ');
+        
+        $prompt = "Actúa como un experto en soporte técnico. Tu tarea es clasificar tickets de soporte.\n";
+        $prompt .= "Responde ÚNICAMENTE con el nombre de la categoría. No añadas texto extra.\n\n";
+        $prompt .= "CATEGORÍAS DISPONIBLES: [{$categoryNames}]\n\n";
+        $prompt .= "REGLAS POR CATEGORÍA:\n";
+
+        $allExamples = [];
+
+        foreach ($categories as $category) {
+            $cleanNotes = strip_tags($category->notes);
+            
+            // Extraer descripción
+            $description = $category->topic;
+            if (preg_match('/descripción:\s*(.*?)(?=keywords:|ejemplos:|$)/is', $cleanNotes, $matches)) {
+                $description = trim($matches[1]);
+            }
+
+            $prompt .= "- {$category->topic}: {$description}\n";
+
+            if (preg_match('/ejemplos:\s*(.*?)(?=keywords:|descripción:|$)/is', $cleanNotes, $exMatches)) {
+                $examplesList = explode(',', $exMatches[1]);
+                foreach ($examplesList as $example) {
+                    $trimmed = trim($example);
+                    if ($trimmed !== '') {
+                        $allExamples[] = "- '{$trimmed}' -> {$category->topic}";
+                    }
+                }
+            }
+        }
+
+        if (!empty($allExamples)) {
+            $prompt .= "\nEJEMPLOS DE REFERENCIA:\n" . implode("\n", $allExamples) . "\n";
+        }
+
+        $prompt .= "\nINSTRUCCIÓN FINAL: Analiza el sentimiento y la intención. ";
+        $prompt .= "Si no estás seguro, elige la categoría más probable de la lista. ";
+        $prompt .= "Respuesta de una sola palabra:";
+
+        return $prompt;
     }
 
     public function chatWithIA(string $message, string $systemPrompt = '', string $model = null): ?string
@@ -735,8 +739,8 @@ HTML;
             'messages' => $messages,
             'options'  => [
                 'temperature' => 0.0,
-                'num_ctx'     => 512,
-                'num_thread'  => 2,
+                'num_ctx'     => 2048,
+                'num_thread'  => 1,
                 'num_predict' => 20,
             ],
             'stream'   => false,
