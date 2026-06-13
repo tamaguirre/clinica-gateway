@@ -19,8 +19,8 @@ class TicketCategorizationCommand extends Command
     public function handle()
     {
         $categories = Topic::query()
-            ->where('topic_id', '!=', 16)
-            ->get(['topic_id', 'topic', 'sla_id', 'priority_id']);
+            ->where('topic_id', '!=', config('app.general_topic'))
+            ->get(['topic_id', 'topic', 'sla_id', 'priority_id', 'notes']);
 
         if ($categories->isEmpty()) {
             $this->error('No se encontraron categorías disponibles.');
@@ -33,11 +33,11 @@ class TicketCategorizationCommand extends Command
         }
 
         $tickets = Ticket::with('thread.firstEntry', 'ticketData', 'formEntry.valueWithPriority')
-            ->where('topic_id', 16)
+            ->where('topic_id', config('app.general_topic'))
             ->get();
 
         if ($tickets->isEmpty()) {
-            $this->warn('No se encontraron tickets con topic_id = 16.');
+            $this->warn('No se encontraron tickets con topic_id = ' . config('app.general_topic') . '.');
             return Command::SUCCESS;
         }
 
@@ -54,19 +54,39 @@ class TicketCategorizationCommand extends Command
             $texto = strip_tags($entry->body ?? '');
             $textoLower = mb_strtolower($texto);
 
-            $systemPrompt = "Eres un clasificador de tickets de soporte. Responde ÚNICAMENTE con una de estas 4 palabras exactas: Orientación, Técnicas, Urgencia, Auditorías.\n\n" .
-                            "REGLAS ESTRICTAS DE CLASIFICACIÓN:\n" .
-                            "- Orientación: Dudas, solicitud de manuales, pasos a seguir o recuperación de contraseñas.\n" .
-                            "- Técnicas: Fallos de sistema, impresoras, errores de red o aplicaciones que no abren.\n" .
-                            "- Urgencia: EXCLUSIVO para incidentes críticos de ciberseguridad (hackeos, ransomware, robo de datos) o caída total de infraestructura.\n" .
-                            "- Auditorías: Solicitud de revisión de logs, historiales, trazabilidad o control.";
-            
-            // El usuario ahora solo envía el texto limpio, sin instrucciones extra.
+            $categoryNames = $categories->pluck('topic')->implode(', ');
+            $systemPrompt = "Eres un clasificador de tickets. Responde ÚNICAMENTE con el nombre de la categoría, sin descripciones, prefijos ni explicaciones.\n";
+            $systemPrompt .= "Tu tarea es leer el ticket y responder ÚNICAMENTE con el nombre de la categoría que mejor se ajuste.\n\n";
+            $systemPrompt .= "CATEGORÍAS PERMITIDAS: [{$categoryNames}]\n\n";
+            $systemPrompt .= "DEFINICIONES:\n";
+
+            foreach ($categories as $category) {
+                $topicName = $category->topic;
+                $cleanNotes = strip_tags($category->notes); 
+    
+                if (preg_match('/descripción:\s*(.*?)(?=keywords:|$)/is', $cleanNotes, $matches)) {
+                    $description = trim($matches[1]);
+                } else {
+                    $description = trim($cleanNotes); 
+                }
+
+                $systemPrompt .= "- {$topicName}: {$description}\n";
+            }
+
+            $systemPrompt .= "\nREGLA DE ORO: Responde solo el nombre exacto de la categoría. No repitas la definición.\n";
+            $systemPrompt .= "EJEMPLOS DE REFERENCIA:\n";
+            $systemPrompt .= "- 'No puedo entrar al sistema, olvidé mi clave' -> Orientación\n";
+            $systemPrompt .= "- 'La impresora hace un ruido raro y no imprime' -> Técnicas\n";
+            $systemPrompt .= "- 'Necesito el log de accesos de la semana pasada' -> Auditorías\n";
+            $systemPrompt .= "- 'Hay un virus bloqueando todos los archivos del servidor' -> Urgencia\n";
+
+            $systemPrompt = trim($systemPrompt);
+
             $userPrompt = $texto;
 
             $this->line("Ticket #{$ticket->ticket_id}: consultando...");
 
-            $response = $this->chatWithSmolLM($userPrompt, $systemPrompt);
+            $response = $this->chatWithIA($userPrompt, $systemPrompt);
 
             if ($response === null) {
                 $this->error("Ticket #{$ticket->ticket_id}: no se pudo obtener respuesta.");
@@ -145,12 +165,18 @@ class TicketCategorizationCommand extends Command
         $globalStart = microtime(true);
         $cpuStart    = getrusage();
 
-        $keywords = [
-            'Urgencia'    => ['urgencia', 'urgente', 'emergencia', 'crítico', 'critico', 'inmediato', 'inmediata', 'grave', 'riesgo', 'peligro', 'hackear', 'hackearon', 'hackeado', 'hackeo', 'hack', 'hacker', 'intrusión', 'intrusion', 'acceso no autorizado', 'brecha', 'vulnerabilidad', 'ataque', 'ciberataque', 'robo de datos', 'filtracion', 'filtración', 'comprometido', 'comprometida', 'base de datos comprometida', 'entraron al sistema', 'entraron a la base'],
-            'Auditorías'  => ['auditoría', 'auditoria', 'auditar', 'revisión', 'revision', 'control de calidad', 'cumplimiento', 'inspección', 'inspeccion', 'normativa'],
-            'Orientación' => ['orientación', 'orientacion', 'necesito ayuda', 'necesito información', 'necesito informacion', 'información', 'informacion', 'turno', 'consulta', 'cómo hago', 'como hago', 'dónde', 'donde', 'tramite', 'trámite', 'guía', 'guia'],
-            'Técnicas'    => ['técnica', 'tecnica', 'técnico', 'tecnico', 'sistema', 'red', 'firewall', 'software', 'hardware', 'configurar', 'configuración', 'configuracion', 'instalar', 'instalación', 'instalacion', 'equipo', 'computadora', 'servidor', 'error', 'falla', 'conectividad', 'internet', 'acceso', 'contraseña', 'password'],
-        ];
+        $keywords = $categories->pluck('notes', 'topic') // Mapea [ 'Nombre del Topic' => 'Texto de notes' ]
+            ->map(function ($notes) {
+                if (empty($notes)) return [];
+
+                if (preg_match("/keywords:\s*\[(.*?)\]/s", $notes, $matches)) {
+                    $keywordsString = $matches[1];
+                    preg_match_all("/['\"](.*?)['\"]/", $keywordsString, $wordsMatches);
+                    return $wordsMatches[1];
+                }
+                return [];
+            })
+        ->toArray();
 
         $results   = [];
         $correct   = 0;
@@ -190,19 +216,40 @@ class TicketCategorizationCommand extends Command
                 $method  = 'AI';
                 $matched = null;
 
-            $systemPrompt = "Eres un clasificador de tickets de soporte. Responde ÚNICAMENTE con una de estas 4 palabras exactas: Orientación, Técnicas, Urgencia, Auditorías.\n\n" .
-                            "REGLAS ESTRICTAS DE CLASIFICACIÓN:\n" .
-                            "- Orientación: Dudas, solicitud de manuales, pasos a seguir o recuperación de contraseñas.\n" .
-                            "- Técnicas: Fallos de sistema, impresoras, errores de red o aplicaciones que no abren.\n" .
-                            "- Urgencia: EXCLUSIVO para incidentes críticos de ciberseguridad (hackeos, ransomware, robo de datos) o caída total de infraestructura.\n" .
-                            "- Auditorías: Solicitud de revisión de logs, historiales, trazabilidad o control.";
+            $categoryNames = $categories->pluck('topic')->implode(', ');
+            $systemPrompt = "Eres un clasificador de tickets. Responde ÚNICAMENTE con el nombre de la categoría, sin descripciones, prefijos ni explicaciones.\n";
+            $systemPrompt .= "Tu tarea es leer el ticket y responder ÚNICAMENTE con el nombre de la categoría que mejor se ajuste.\n\n";
+            $systemPrompt .= "CATEGORÍAS PERMITIDAS: [{$categoryNames}]\n\n";
+            $systemPrompt .= "DEFINICIONES:\n";
+
+            foreach ($categories as $category) {
+                $topicName = $category->topic;
+                $cleanNotes = strip_tags($category->notes); 
+    
+                if (preg_match('/descripción:\s*(.*?)(?=keywords:|$)/is', $cleanNotes, $matches)) {
+                    $description = trim($matches[1]);
+                } else {
+                    $description = trim($cleanNotes); 
+                }
+
+                $systemPrompt .= "- {$topicName}: {$description}\n";
+            }
+
+            $systemPrompt .= "\nREGLA DE ORO: Responde solo el nombre exacto de la categoría. No repitas la definición.\n";
+            $systemPrompt .= "EJEMPLOS DE REFERENCIA:\n";
+            $systemPrompt .= "- 'No puedo entrar al sistema, olvidé mi clave' -> Orientación\n";
+            $systemPrompt .= "- 'La impresora hace un ruido raro y no imprime' -> Técnicas\n";
+            $systemPrompt .= "- 'Necesito el log de accesos de la semana pasada' -> Auditorías\n";
+            $systemPrompt .= "- 'Hay un virus bloqueando todos los archivos del servidor' -> Urgencia\n";
+
+            $systemPrompt = trim($systemPrompt);
             
             $userPrompt = $texto;
             
             $this->line("Ticket #{$id}: consultando...");
 
             $aiStart  = microtime(true);
-            $response = $this->chatWithSmolLM($userPrompt, $systemPrompt);
+            $response = $this->chatWithIA($userPrompt, $systemPrompt);
             $aiTimeMs = round((microtime(true) - $aiStart) * 1000, 1);
 
             if ($response === null) {
@@ -303,9 +350,12 @@ class TicketCategorizationCommand extends Command
         $aiCol      = $resultsCol->where('method', 'AI');
         $totalMs    = round(($globalEnd - $globalStart) * 1000);
 
+        $model = config('services.ollama.model');
+
         $stats = [
             'generated_at'        => date('d/m/Y H:i:s'),
             'driver'              => $this->option('driver') ?? 'api',
+            'model'               => $model,
             'source'              => 'json',
             'total_tickets'       => $resultsCol->count(),
             'total_time_ms'       => $totalMs,
@@ -388,7 +438,7 @@ body{background:#f1f5f9;font-family:'Segoe UI',system-ui,sans-serif}
     </div>
     <div class="col-auto text-end small">
       <div class="opacity-75 mb-2">Generado el<br><strong>__GENERATED_AT__</strong></div>
-      <div>__BADGE_DRIVER__ __BADGE_SOURCE__</div>
+      <div>__BADGE_MODEL__ __BADGE_SOURCE__</div>
     </div>
   </div>
 </div>
@@ -634,9 +684,7 @@ new Chart(document.getElementById('cD'),{
 </html>
 HTML;
 
-        $driverBadge = $stats['driver'] === 'python'
-            ? '<span class="badge" style="background:#f0fdf4;color:#15803d;border:1px solid #86efac">&#x1F40D; Python SDK</span>'
-            : '<span class="badge" style="background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd">&#x1F310; HTTP API</span>';
+        $modelBadge = '<span class="badge" style="background:#f3e8ff;color:#7c3aed;border:1px solid #d8b4fe">🤖 ' . htmlspecialchars($stats['model']) . '</span>';
 
         $sourceBadge = '<span class="badge" style="background:#fefce8;color:#a16207;border:1px solid #fde047">&#x1F4C4; JSON</span>';
 
@@ -647,7 +695,7 @@ HTML;
                 '__KW_N__',         '__KW_PCT__',   '__KW_AVG__',
                 '__AI_N__',         '__AI_PCT__',   '__AI_AVG__',
                 '__MEM__',          '__CPU_U__',    '__CPU_S__',
-                '__BADGE_DRIVER__', '__BADGE_SOURCE__',
+                '__BADGE_MODEL__', '__BADGE_SOURCE__',
                 '__STATS__',        '__RESULTS__',
             ],
             [
@@ -657,17 +705,18 @@ HTML;
                 $stats['keyword_count'],  $kwPct,                        $stats['avg_keyword_time_ms'],
                 $stats['ai_count'],       $aiPct,                        $stats['avg_ai_time_ms'],
                 $stats['memory_peak_mb'], $stats['cpu_user_ms'],         $stats['cpu_sys_ms'],
-                $driverBadge,             $sourceBadge,
+                $modelBadge,              $sourceBadge,
                 $statsJson,               $resJson,
             ],
             $tpl
         );
     }
 
-    public function chatWithSmolLM(string $message, string $systemPrompt = '', string $model = 'smollm'): ?string
+    public function chatWithIA(string $message, string $systemPrompt = '', string $model = null): ?string
     {
+        $model = $model ?? config('services.ollama.model');
         if ($this->option('driver') === 'python') {
-            return $this->chatWithSmolLMPython($message, $systemPrompt, $model);
+            return $this->chatWithIAPython($message, $systemPrompt, $model);
         }
 
         $messages = [];
@@ -675,26 +724,6 @@ HTML;
         if ($systemPrompt !== '') {
             $messages[] = ['role' => 'system', 'content' => $systemPrompt];
         }
-
-        // --- INICIO DE EJEMPLOS TRAMPA Y PATRONES (Few-Shot) ---
-        $messages[] = ['role' => 'user', 'content' => '¿Cómo activo el doble factor en mi correo?'];
-        $messages[] = ['role' => 'assistant', 'content' => 'Orientación'];
-
-        $messages[] = ['role' => 'user', 'content' => 'La impresora de farmacia no conecta a la red local'];
-        $messages[] = ['role' => 'assistant', 'content' => 'Técnicas'];
-
-        $messages[] = ['role' => 'user', 'content' => '¡Ayuda urgente! No puedo abrir el Excel y tengo que entregar un reporte.'];
-        $messages[] = ['role' => 'assistant', 'content' => 'Técnicas'];
-
-        $messages[] = ['role' => 'user', 'content' => 'Necesito urgente saber cómo resetear mi clave del portal desde casa.'];
-        $messages[] = ['role' => 'assistant', 'content' => 'Orientación'];
-
-        $messages[] = ['role' => 'user', 'content' => '¡Ataque de ransomware! Servidores encriptados y están robando datos'];
-        $messages[] = ['role' => 'assistant', 'content' => 'Urgencia'];
-
-        $messages[] = ['role' => 'user', 'content' => 'Solicito el registro y control de logs del directorio activo'];
-        $messages[] = ['role' => 'assistant', 'content' => 'Auditorías'];
-        // --- FIN DE EJEMPLOS ---
 
         // Ticket real enviado al final
         $messages[] = ['role' => 'user', 'content' => $message];
@@ -707,7 +736,7 @@ HTML;
             'options'  => [
                 'temperature' => 0.0,
                 'num_ctx'     => 512,
-                'num_thread'  => 1,
+                'num_thread'  => 2,
                 'num_predict' => 20,
             ],
             'stream'   => false,
@@ -721,9 +750,10 @@ HTML;
         return trim($response->json('message.content'));
     }
 
-    private function chatWithSmolLMPython(string $message, string $systemPrompt = '', string $model = 'smollm'): ?string
+    private function chatWithIAPython(string $message, string $systemPrompt = '', string $model = null): ?string
     {
-        $scriptPath = base_path('scripts/smollm_classify.py');
+        $model = $model ?? config('services.ollama.model');
+        $scriptPath = base_path('scripts/ia_classify.py');
 
         if (!file_exists($scriptPath)) {
             Log::error("Script Python no encontrado: {$scriptPath}");
@@ -759,7 +789,7 @@ HTML;
         $exitCode = proc_close($process);
 
         if ($exitCode !== 0) {
-            Log::error("Python smolLM2 exit({$exitCode}): {$stderr}");
+            Log::error("Python exit({$exitCode}): {$stderr}");
             return null;
         }
 
