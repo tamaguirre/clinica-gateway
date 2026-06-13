@@ -23,6 +23,9 @@ class TicketCategorizationCommandTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Limpiar archivos de pruebas anteriores
+        @unlink(storage_path('app/tickets-report.html'));
+        @unlink(storage_path('app/tickets-results.json'));
         $this->tempJson = storage_path('app/test-tickets-' . uniqid() . '.json');
     }
 
@@ -30,6 +33,7 @@ class TicketCategorizationCommandTest extends TestCase
     {
         @unlink($this->tempJson);
         @unlink(storage_path('app/tickets-results.json'));
+        @unlink(storage_path('app/tickets-report.html'));
         parent::tearDown();
     }
 
@@ -257,7 +261,7 @@ class TicketCategorizationCommandTest extends TestCase
             ['id' => 1, 'body' => 'Brecha de datos detectada en el servidor', 'expected' => 'Urgencia'],
         ]);
 
-        $this->runJson(); // lleva --no-report por defecto en runJson()
+        $this->runJson();
 
         $this->assertFileDoesNotExist(storage_path('app/tickets-report.html'));
     }
