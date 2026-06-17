@@ -27,7 +27,7 @@
             </div>
             <div class="bg-blue-50 p-6 rounded-xl border border-blue-100">
                 <h3 class="font-bold text-blue-900">Usuario Externo</h3>
-                <p class="text-sm mt-2 text-gray-700">Solicitante que se comunica principalmente por WhatsApp.</p>
+                <p class="text-sm mt-2 text-gray-700">Usuario externo que solicita asistencia en ciberseguridad a través de la creación y seguimiento de tickets.</p>
             </div>
         </div>
     </section>

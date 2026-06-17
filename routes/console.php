@@ -7,4 +7,4 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Artisan::command(TicketCategorizationCommand::class)->everyMinute()->withoutOverlapping();
+//Artisan::command(TicketCategorizationCommand::class)->everyMinute()->withoutOverlapping();
