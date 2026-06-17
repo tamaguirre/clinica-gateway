@@ -8,3 +8,7 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+Route::view('/manual-usuario', 'user-manual')->name('user-manual');
+Route::view('/guia-operacion', 'operation-guide')->name('operation-guide');
+Route::view('/guia-despliegue', 'deploy-guide')->name('deploy-guide');
