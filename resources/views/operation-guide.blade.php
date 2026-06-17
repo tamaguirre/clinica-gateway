@@ -3,13 +3,24 @@
 @section('header-title', 'Guía de Operación para Docentes y Estudiantes')
 
 @section('content')
-    <section class="mb-12">
+    <nav class="mb-12 p-6 bg-white rounded-xl border shadow-sm">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Índice de contenidos</h2>
+        <ul class="space-y-2 text-blue-700 font-medium">
+            <li><a href="#que-es" class="hover:underline">1. ¿Para qué sirve esta plataforma?</a></li>
+            <li><a href="#roles" class="hover:underline">2. Roles de Usuario</a></li>
+            <li><a href="#conceptos" class="hover:underline">3. Conceptos Clave</a></li>
+            <li><a href="#dashboard" class="hover:underline">4. Dashboard Inteligente</a></li>
+            <li><a href="#tareas" class="hover:underline">5. Guía de Tareas Administrativas</a></li>
+        </ul>
+    </nav>
+
+    <section id="que-es" class="mb-12">
         <h2 class="text-2xl font-bold text-blue-800 mb-4">1. ¿Para qué sirve esta plataforma?</h2>
         <p class="text-gray-700 leading-relaxed text-lg">Esta herramienta es el centro de operaciones de la Clínica. Aquí llegan todas las solicitudes de ayuda (tickets) de personas o empresas externas, permitiendo que la gestión sea ordenada, rápida y sin depender de procesos manuales dispersos.</p>
         <img src="/img/tickets.png" alt="Gestión de Tickets" class="w-full rounded-xl my-6 border shadow-sm">
     </section>
 
-    <section class="mb-12">
+    <section id="roles" class="mb-12">
         <h2 class="text-2xl font-bold text-blue-800 mb-4">2. Roles de Usuario</h2>
         <div class="flex justify-center gap-8 mb-6">
             <svg class="w-16 h-16 fill-blue-800" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
@@ -32,7 +43,7 @@
         </div>
     </section>
 
-    <section class="mb-12">
+    <section id="conceptos" class="mb-12">
         <h2 class="text-2xl font-bold text-blue-800 mb-4">3. Conceptos Clave</h2>
         <div class="space-y-4 text-gray-700">
             <p><strong>Temas de Ayuda:</strong> Categorías donde se clasifican los incidentes (ej. "Phishing").</p>
@@ -43,7 +54,7 @@
         </div>
     </section>
 
-    <section class="mb-12">
+    <section id="dashboard" class="mb-12">
         <h2 class="text-2xl font-bold text-blue-800 mb-4">4. Dashboard Inteligente</h2>
         <p class="text-gray-700 text-lg mb-6">
             El <strong>Dashboard</strong> es el centro de monitoreo en tiempo real de la Clínica. Aquí los docentes y estudiantes pueden visualizar el comportamiento del sistema y la efectividad del motor de IA.
@@ -69,7 +80,7 @@
         </div>
     </section>
 
-    <section class="mb-12">
+    <section id="tareas" class="mb-12">
         <h2 class="text-2xl font-bold text-blue-800 mb-6">5. Guía de Tareas Administrativas</h2>
         
         <div class="mb-10">

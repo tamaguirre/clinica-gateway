@@ -3,7 +3,19 @@
 @section('header-title', 'Despliegue y Configuración Técnica')
 
 @section('content')
-    <section class="mb-12">
+    <nav class="mb-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Contenido</h3>
+        <ul class="space-y-1">
+            <li><a href="#requisitos-entorno" class="text-blue-700 hover:underline flex items-center">1. Requisitos del Entorno</a></li>
+            <li><a href="#configuracion-entorno" class="text-blue-700 hover:underline flex items-center">2. Configuración de Entorno (.env)</a></li>
+            <li><a href="#automatizacion-categorizacion" class="text-blue-700 hover:underline flex items-center">3. Automatización de Categorización</a></li>
+            <li><a href="#benchmarking-reporte" class="text-blue-700 hover:underline flex items-center">4. Benchmarking y Reporte de IA</a></li>
+            <li><a href="#pruebas-automatizadas" class="text-blue-700 hover:underline flex items-center">5. Pruebas Automatizadas</a></li>
+            <li><a href="#repositorio-despliegue" class="text-blue-700 hover:underline flex items-center">6. Repositorio y Despliegue (Git + cPanel)</a></li>
+        </ul>
+    </nav>
+
+    <section id="requisitos-entorno" class="mb-12">
         <h2 class="text-2xl font-bold text-blue-800 mb-4">1. Requisitos del Entorno</h2>
         <ul class="list-disc ml-6 space-y-2 text-gray-700">
             <li><strong>PHP 8.2+</strong> con extensiones: <code>mbstring</code>, <code>curl</code>, <code>xml</code>, <code>dom</code>, <code>fileinfo</code>.</li>
@@ -15,7 +27,7 @@
         </div>
     </section>
 
-    <section class="mb-12">
+    <section id="configuracion-entorno" class="mb-12">
         <h2 class="text-2xl font-bold text-blue-800 mb-4">2. Configuración de Entorno (.env)</h2>
         <pre class="bg-gray-800 text-white p-6 rounded-lg overflow-x-auto text-sm">
 # URL de la API de osTicket
@@ -30,7 +42,7 @@ OLLAMA_MODEL="qwen2.5:0.5b"
 APP_GENERAL_TOPIC=16</pre>
     </section>
 
-    <section class="mb-12">
+    <section id="automatizacion-categorizacion" class="mb-12">
         <h2 class="text-2xl font-bold text-blue-800 mb-4">3. Automatización de Categorización</h2>
         <p class="text-gray-700">El proceso de análisis por IA se ejecuta automáticamente mediante un <strong>Cron Job</strong> configurado en cPanel que se dispara cada <strong>1 minuto</strong> para gestionar las tareas programadas:</p>
         
@@ -45,7 +57,7 @@ APP_GENERAL_TOPIC=16</pre>
         <img src="/img/cron-job.png" alt="Esquema de Automatización" class="w-full rounded-lg border-2 border-dashed mt-6">
     </section>
 
-    <section class="mb-12">
+    <section id="benchmarking-reporte" class="mb-12">
         <h2 class="text-2xl font-bold text-blue-800 mb-4">4. Benchmarking y Reporte de IA</h2>
         <p class="text-gray-700 mb-4">Para validar el rendimiento y la precisión del modelo, el sistema permite realizar pruebas masivas mediante un dataset de entrenamiento/validación:</p>
         
@@ -79,7 +91,7 @@ APP_GENERAL_TOPIC=16</pre>
         </div>
     </section>
 
-    <section class="mb-12">
+    <section id="pruebas-automatizadas" class="mb-12">
         <h2 class="text-2xl font-bold text-blue-800 mb-4">5. Pruebas Automatizadas</h2>
         <p class="text-gray-700 mb-4">El proyecto integra un suite de pruebas para garantizar la estabilidad del sistema:</p>
         
@@ -108,7 +120,7 @@ APP_GENERAL_TOPIC=16</pre>
         </div>
     </section>
 
-    <section class="mb-12">
+    <section id="repositorio-despliegue" class="mb-12">
         <h2 class="text-2xl font-bold text-blue-800 mb-4">6. Repositorio y Despliegue (Git + cPanel)</h2>
         <p class="text-gray-700 mb-4">El sistema reside en el repositorio: <a href="https://github.com/tamaguirre/clinica-gateway" class="text-blue-600 underline" target="_blank">clinica-gateway</a>.</p>
         <p class="text-gray-700 mb-4">Para desplegar cambios, ejecuta en la terminal del servidor:</p>
