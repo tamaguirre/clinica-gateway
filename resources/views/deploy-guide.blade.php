@@ -66,10 +66,50 @@ APP_GENERAL_TOPIC=16</pre>
                 </li>
             </ul>
         </div>
+
+        <div class="mt-8 p-6 bg-indigo-50 rounded-xl border border-indigo-200">
+            <h3 class="font-bold text-indigo-900 mb-2">Visualización de Resultados</h3>
+            <p class="text-gray-700 mb-4">
+                Una vez ejecutado el proceso, los resultados detallados del benchmarking se encuentran disponibles para su análisis en el panel de reportes:
+            </p>
+            <a href="/ticket-report" target="_blank" 
+               class="inline-block bg-indigo-700 text-white px-6 py-2 rounded-lg font-semibold hover:bg-indigo-800 transition">
+                Ir al Reporte de IA
+            </a>
+        </div>
     </section>
 
     <section class="mb-12">
-        <h2 class="text-2xl font-bold text-blue-800 mb-4">5. Repositorio y Despliegue (Git + cPanel)</h2>
+        <h2 class="text-2xl font-bold text-blue-800 mb-4">5. Pruebas Automatizadas</h2>
+        <p class="text-gray-700 mb-4">El proyecto integra un suite de pruebas para garantizar la estabilidad del sistema:</p>
+        
+        <div class="space-y-6">
+            <div>
+                <h3 class="font-bold text-gray-800">A. Pruebas Unitarias y Funcionales (PHPUnit)</h3>
+                <p class="text-sm text-gray-600 mb-2">Valida la lógica de negocio y la integración con la API de osTicket.</p>
+                <div class="bg-gray-100 p-3 rounded border font-mono text-sm space-y-2">
+                    <p class="text-gray-800"># Ejecutar solo pruebas unitarias:</p>
+                    <code class="block text-blue-800">php artisan test --unit</code>
+                    
+                    <p class="text-gray-800 mt-2"># Ejecutar todas las pruebas (Unitarias y Funcionales):</p>
+                    <code class="block text-blue-800">php artisan test</code>
+                </div>
+            </div>
+            
+            <div>
+                <h3 class="font-bold text-gray-800">B. Pruebas E2E (Playwright)</h3>
+                <p class="text-sm text-gray-600 mb-2">Simula el flujo completo del usuario en el navegador (creación de tickets, inicio de sesión).</p>
+                <code class="block bg-gray-100 p-3 rounded border font-mono text-sm">npm run test:playwright</code>
+            </div>
+        </div>
+        
+        <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-200 mt-6 text-sm text-indigo-800">
+            <strong>Recomendación:</strong> Ejecuta ambas suites de pruebas antes de realizar cualquier <code>git push</code> hacia el repositorio principal para asegurar que no existan regresiones.
+        </div>
+    </section>
+
+    <section class="mb-12">
+        <h2 class="text-2xl font-bold text-blue-800 mb-4">6. Repositorio y Despliegue (Git + cPanel)</h2>
         <p class="text-gray-700 mb-4">El sistema reside en el repositorio: <a href="https://github.com/tamaguirre/clinica-gateway" class="text-blue-600 underline" target="_blank">clinica-gateway</a>.</p>
         <p class="text-gray-700 mb-4">Para desplegar cambios, ejecuta en la terminal del servidor:</p>
         

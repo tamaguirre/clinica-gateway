@@ -44,7 +44,33 @@
     </section>
 
     <section class="mb-12">
-        <h2 class="text-2xl font-bold text-blue-800 mb-6">4. Guía de Tareas Administrativas</h2>
+        <h2 class="text-2xl font-bold text-blue-800 mb-4">4. Dashboard Inteligente</h2>
+        <p class="text-gray-700 text-lg mb-6">
+            El <strong>Dashboard</strong> es el centro de monitoreo en tiempo real de la Clínica. Aquí los docentes y estudiantes pueden visualizar el comportamiento del sistema y la efectividad del motor de IA.
+        </p>
+        
+        <div class="bg-blue-50 p-6 rounded-xl border border-blue-100">
+            <h3 class="font-bold text-blue-900 mb-2">Acceso al Dashboard</h3>
+            <p class="text-gray-700 mb-4">Puedes acceder al resumen completo del sistema en el siguiente enlace:</p>
+            <a href="/dashboard" target="_blank" 
+               class="inline-block bg-blue-800 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-900 transition">
+                Ir al Dashboard Inteligente
+            </a>
+        </div>
+
+        <div class="mt-6 space-y-4 text-gray-700">
+            <p><strong>¿Qué contiene este panel?</strong></p>
+            <ul class="list-disc ml-6 space-y-2">
+                <li><strong>Métricas Generales:</strong> Visualización de tickets totales, urgencias y casos pendientes de categorización.</li>
+                <li><strong>Distribución por Categoría:</strong> Gráfico de torta que resume cómo la IA ha clasificado las solicitudes.</li>
+                <li><strong>Tendencias (Tickets por día):</strong> Evolución de la carga de trabajo en los últimos 30 días.</li>
+                <li><strong>Resumen Tecnológico:</strong> Visualización de la integración bajo <em>Qwen2.5, Ollama y Laravel</em>.</li>
+            </ul>
+        </div>
+    </section>
+
+    <section class="mb-12">
+        <h2 class="text-2xl font-bold text-blue-800 mb-6">5. Guía de Tareas Administrativas</h2>
         
         <div class="mb-10">
             <h3 class="text-xl font-semibold text-gray-800 mb-4">A. ¿Cómo crear un nuevo Tema de Ayuda?</h3>
@@ -60,7 +86,7 @@
         <div>
             <h3 class="text-xl font-semibold text-gray-800 mb-4">B. ¿Cómo agregar un nuevo usuario?</h3>
             <img src="/img/user-edit.png" alt="Editar Usuario" class="w-full rounded-lg shadow-sm border mb-4">
-            <p class="text-gray-700">Ve al panel de <strong>Users</strong> y haz clic en <strong>Add User</strong>. Al registrar el número de teléfono, recuerda ingresarlo <strong>sin el símbolo "+"</strong> (ejemplo: 56912345678). El sistema requiere este formato estricto para vincular correctamente al usuario.</p>
+            <p class="text-gray-700">Ve al panel de <strong>Users</strong> y haz clic en <strong>Add User</strong>. Al registrar el número de teléfono, recuerda ingresarlo <strong>sin el símbolo "+"</strong> (ejemplo: 56912345678). El sistema requiere este formato estricto para vincular correctamente al usuario y que este pueda solicitar tickets vía Whatsapp.</p>
         </div>
     </section>
 @endsection

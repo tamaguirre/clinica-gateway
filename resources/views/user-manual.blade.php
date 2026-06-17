@@ -8,7 +8,7 @@
         <div class="grid md:grid-cols-2 gap-6">
             <div class="bg-blue-50 p-6 rounded-xl border">
                 <h3 class="font-bold text-blue-900">Por WhatsApp</h3>
-                <p class="text-sm">Envía mensaje, espera saludo y cuando se te pida, describe el incidente.</p>
+                <p class="text-sm">Envía mensaje, espera saludo y cuando se te pida, describe el incidente, debe estar registrado previamente en la plataforma con tu número de teléfono para usar esta opción.</p>
             </div>
             <div class="bg-blue-50 p-6 rounded-xl border">
                 <h3 class="font-bold text-blue-900">Por Plataforma</h3>
