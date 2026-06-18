@@ -32,7 +32,12 @@
                     <span class="font-mono font-bold text-green-600">100% Pass</span>
                 </div>
             </div>
-            <code class="block bg-gray-900 text-blue-400 p-2 rounded text-xs">php artisan test</code>
+            <div class="flex gap-2">
+                <a href="/storage/phpunit/reporte-pruebas.html" target="_blank" class="text-xs bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 font-semibold transition">
+                    Ver Reporte HTML
+                </a>
+                <code class="flex-1 bg-gray-900 text-blue-400 p-2 rounded text-xs">php artisan test</code>
+            </div>
         </div>
 
         <!-- Playwright Summary Card -->
