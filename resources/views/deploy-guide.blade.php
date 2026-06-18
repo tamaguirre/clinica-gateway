@@ -39,7 +39,8 @@ OLLAMA_URL="206.189.192.107:11434"
 OLLAMA_MODEL="qwen2.5:0.5b"
 
 # Número de tópico general para la IA
-APP_GENERAL_TOPIC=16</pre>
+APP_GENERAL_TOPIC=16
+        </pre>
     </section>
 
     <section id="automatizacion-categorizacion" class="mb-12">
@@ -111,6 +112,21 @@ APP_GENERAL_TOPIC=16</pre>
             <div>
                 <h3 class="font-bold text-gray-800">B. Pruebas E2E (Playwright)</h3>
                 <p class="text-sm text-gray-600 mb-2">Simula el flujo completo del usuario en el navegador (creación de tickets, inicio de sesión).</p>
+                
+                <p class="text-xs text-gray-700 mb-2 italic">Requisito: Configurar el archivo <code>.env.test</code> en la raíz:</p>
+                <pre class="bg-gray-800 text-white p-4 rounded-lg overflow-x-auto text-xs mb-3">
+# Credenciales de Agente/Staff
+OSTICKET_EMAIL="agente@clinica.com"
+OSTICKET_PASSWORD="password_seguro"
+
+# Credenciales de Administrador (Panel SCP)
+OSTICKET_ADMIN_USER="admin"
+OSTICKET_ADMIN_PASSWORD="admin_password"
+
+# URL base de la instalación de osTicket
+OSTICKET_URL="http://localhost:8080"
+                </pre>
+
                 <code class="block bg-gray-100 p-3 rounded border font-mono text-sm">npm run test:playwright</code>
             </div>
         </div>
