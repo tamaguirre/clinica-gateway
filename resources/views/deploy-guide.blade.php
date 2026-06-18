@@ -7,11 +7,12 @@
         <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Contenido</h3>
         <ul class="space-y-1">
             <li><a href="#requisitos-entorno" class="text-blue-700 hover:underline flex items-center">1. Requisitos del Entorno</a></li>
-            <li><a href="#configuracion-entorno" class="text-blue-700 hover:underline flex items-center">2. Configuración de Entorno (.env)</a></li>
-            <li><a href="#automatizacion-categorizacion" class="text-blue-700 hover:underline flex items-center">3. Automatización de Categorización</a></li>
-            <li><a href="#benchmarking-reporte" class="text-blue-700 hover:underline flex items-center">4. Benchmarking y Reporte de IA</a></li>
-            <li><a href="#pruebas-automatizadas" class="text-blue-700 hover:underline flex items-center">5. Pruebas Automatizadas</a></li>
-            <li><a href="#repositorio-despliegue" class="text-blue-700 hover:underline flex items-center">6. Repositorio y Despliegue (Git + cPanel)</a></li>
+            <li><a href="#configuracion-env" class="text-blue-700 hover:underline flex items-center">2. Configuración de Entorno (.env)</a></li>
+            <li><a href="#configuracion-ollama" class="text-blue-700 hover:underline flex items-center">3. Configuración de Ollama</a></li>
+            <li><a href="#automatizacion-categorizacion" class="text-blue-700 hover:underline flex items-center">4. Automatización de Categorización</a></li>
+            <li><a href="#benchmarking-reporte" class="text-blue-700 hover:underline flex items-center">5. Benchmarking y Reporte de IA</a></li>
+            <li><a href="#pruebas-automatizadas" class="text-blue-700 hover:underline flex items-center">6. Pruebas Automatizadas</a></li>
+            <li><a href="#repositorio-despliegue" class="text-blue-700 hover:underline flex items-center">7. Repositorio y Despliegue (Git + cPanel)</a></li>
         </ul>
     </nav>
 
@@ -27,7 +28,7 @@
         </div>
     </section>
 
-    <section id="configuracion-entorno" class="mb-12">
+    <section id="configuracion-env" class="mb-12">
         <h2 class="text-2xl font-bold text-blue-800 mb-4">2. Configuración de Entorno (.env)</h2>
         <pre class="bg-gray-800 text-white p-6 rounded-lg overflow-x-auto text-sm">
 # URL de la API de osTicket
@@ -43,8 +44,57 @@ APP_GENERAL_TOPIC=16
         </pre>
     </section>
 
+    <section id="configuracion-ollama" class="mb-12">
+        <h2 class="text-2xl font-bold text-blue-800 mb-4">3. Configuración de Ollama</h2>
+        <p class="text-gray-700 mb-4">
+            Ollama es una herramienta que permite ejecutar modelos de lenguaje grandes (LLMs) localmente. Es fundamental para el funcionamiento de la categorización de tickets por IA.
+        </p>
+
+        <h3 class="font-bold text-gray-800 mb-2">Instalación de Ollama</h3>
+        <p class="text-gray-700 mb-2">
+            Para instalar Ollama, visita su <a href="https://ollama.com/download" target="_blank" class="text-blue-600 underline">sitio web oficial</a> y sigue las instrucciones para tu sistema operativo (Linux, macOS, Windows).
+        </p>
+        <ul class="list-disc ml-6 space-y-1 text-gray-700 mb-4">
+            <li><strong>Local:</strong> Instala Ollama directamente en tu máquina de desarrollo.</li>
+            <li><strong>Servidor:</strong> Instala Ollama en tu servidor o VPS. Asegúrate de que el puerto <code>11434</code> esté accesible (puede requerir configuración de firewall).</li>
+        </ul>
+        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200 mt-4 text-sm text-blue-800 mb-4">
+            <strong>Nota:</strong>
+            Una vez instalado, puedes verificar su funcionamiento ejecutando <code>ollama --version</code> en tu terminal.
+        </div>
+
+        <h3 class="font-bold text-gray-800 mb-2">Descarga de Modelos de IA</h3>
+        <p class="text-gray-700 mb-2">
+            Después de instalar Ollama, necesitarás descargar los modelos de IA que deseas utilizar. El modelo recomendado para este proyecto es <code>qwen2.5:0.5b</code>. Puedes descargarlo con el siguiente comando:
+        </p>
+        <code class="block bg-gray-800 text-white p-3 rounded border font-mono text-sm mb-4">
+            ollama pull qwen2.5:0.5b
+        </code>
+        <p class="text-gray-700">
+            Puedes explorar otros modelos disponibles en el <a href="https://ollama.com/library" target="_blank" class="text-blue-600 underline">Ollama Library</a>.
+        </p>
+
+        <h3 class="font-bold text-gray-800 mb-2">Configuración en el archivo <code>.env</code></h3>
+        <p class="text-gray-700 mb-2">
+            La aplicación gateway se conecta a Ollama utilizando las variables de entorno <code>OLLAMA_URL</code> y <code>OLLAMA_MODEL</code>.
+        </p>
+        <ul class="list-disc ml-6 space-y-1 text-gray-700 mb-4">
+            <li><strong><code>OLLAMA_URL</code>:</strong> La URL donde se está ejecutando el servidor Ollama.
+                <ul class="list-circle ml-6 mt-1 text-sm">
+                    <li><strong>Local:</strong> <code>http://localhost:11434</code></li>
+                    <li><strong>VPS/Remoto:</strong> <code>http://DIRECCION_IP_O_DOMINIO:11434</code></li>
+                </ul>
+            </li>
+            <li><strong><code>OLLAMA_MODEL</code>:</strong> El nombre del modelo de IA a utilizar (ej. <code>qwen2.5:0.5b</code>).</li>
+        </ul>
+        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200 mt-4 text-sm text-blue-800">
+            <strong>Nota:</strong>
+            Asegúrate de que estos valores estén correctamente configurados en tu archivo <code>.env</code> para que la aplicación pueda comunicarse con Ollama.
+        </div>
+    </section>
+
     <section id="automatizacion-categorizacion" class="mb-12">
-        <h2 class="text-2xl font-bold text-blue-800 mb-4">3. Automatización de Categorización</h2>
+        <h2 class="text-2xl font-bold text-blue-800 mb-4">4. Automatización de Categorización</h2>
         <p class="text-gray-700">El proceso de análisis por IA se ejecuta automáticamente mediante un <strong>Cron Job</strong> configurado en cPanel que se dispara cada <strong>1 minuto</strong> para gestionar las tareas programadas:</p>
         
         <code class="block bg-gray-100 p-3 mt-2 rounded border font-mono text-sm">
@@ -59,7 +109,7 @@ APP_GENERAL_TOPIC=16
     </section>
 
     <section id="benchmarking-reporte" class="mb-12">
-        <h2 class="text-2xl font-bold text-blue-800 mb-4">4. Benchmarking y Reporte de IA</h2>
+        <h2 class="text-2xl font-bold text-blue-800 mb-4">5. Benchmarking y Reporte de IA</h2>
         <p class="text-gray-700 mb-4">Para validar el rendimiento y la precisión del modelo, el sistema permite realizar pruebas masivas mediante un dataset de entrenamiento/validación:</p>
         
         <code class="block bg-gray-100 p-3 rounded border font-mono text-sm">
@@ -93,7 +143,7 @@ APP_GENERAL_TOPIC=16
     </section>
 
     <section id="pruebas-automatizadas" class="mb-12">
-        <h2 class="text-2xl font-bold text-blue-800 mb-4">5. Pruebas Automatizadas</h2>
+        <h2 class="text-2xl font-bold text-blue-800 mb-4">6. Pruebas Automatizadas</h2>
         <p class="text-gray-700 mb-4">El proyecto integra un suite de pruebas para garantizar la estabilidad del sistema:</p>
         
         <div class="space-y-6">
@@ -140,7 +190,7 @@ OSTICKET_URL="http://localhost:8080"
     </section>
 
     <section id="repositorio-despliegue" class="mb-12">
-        <h2 class="text-2xl font-bold text-blue-800 mb-4">6. Repositorio y Despliegue (Git + cPanel)</h2>
+        <h2 class="text-2xl font-bold text-blue-800 mb-4">7. Repositorio y Despliegue (Git + cPanel)</h2>
         <p class="text-gray-700 mb-4">El sistema reside en el repositorio: <a href="https://github.com/tamaguirre/clinica-gateway" class="text-blue-600 underline" target="_blank">clinica-gateway</a>.</p>
         <p class="text-gray-700 mb-4">Para desplegar cambios, ejecuta en la terminal del servidor:</p>
         

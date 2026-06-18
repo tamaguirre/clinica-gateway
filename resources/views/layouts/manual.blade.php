@@ -31,7 +31,7 @@
 
              <a href="/reporte-experimentacion" 
             class="px-4 py-2 rounded-lg text-sm font-semibold transition {{ request()->is('reporte-experimentacion') ? 'bg-blue-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
-                Reporte de Experimentación con IA
+                Experimentación con IA
             </a>
         </nav>
 
