@@ -75,7 +75,7 @@ class TicketCategorizationCommand extends Command
                 $bestScore = 0;
                 $bestMatch = null;
                 foreach ($categories as $cat) {
-                    similar_text(strtolower($suggestedName), strtolower($cat->topic), $percent);
+                    similar_text(mb_strtolower($suggestedName), mb_strtolower($cat->topic), $percent);
                     if ($percent > $bestScore) {
                         $bestScore = $percent;
                         $bestMatch = $cat;
@@ -224,7 +224,7 @@ class TicketCategorizationCommand extends Command
                 $bestScore = 0;
                 $bestMatch = null;
                 foreach ($categories as $cat) {
-                    similar_text(strtolower($suggestedName), strtolower($cat->topic), $percent);
+                    similar_text(mb_strtolower($suggestedName), mb_strtolower($cat->topic), $percent);
                     if ($percent > $bestScore) {
                         $bestScore = $percent;
                         $bestMatch = $cat;

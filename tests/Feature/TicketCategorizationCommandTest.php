@@ -17,12 +17,20 @@ class TicketCategorizationCommandTest extends TestCase
 {
     use RefreshDatabase;
 
-    private string $ollamaUrl = 'http://localhost:11434/api/chat';
+    private string $ollamaUrl;
     private string $tempJson;
 
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Forzar el uso de localhost en tests, ignorando la configuración del .env principal
+        config(['app.general_topic' => 16]);
+        config(['services.ollama.url' => env('OLLAMA_URL', 'http://localhost:11434')]);
+        config(['services.ollama.model' => 'qwen2.5:0.5b']);
+        
+        $this->ollamaUrl = config('services.ollama.url') . '/api/chat';
+
         // Limpiar archivos de pruebas anteriores
         @unlink(storage_path('app/tickets-report.html'));
         @unlink(storage_path('app/tickets-results.json'));
@@ -41,10 +49,10 @@ class TicketCategorizationCommandTest extends TestCase
 
     private function seedCategories(): void
     {
-        Topic::factory()->orientacion()->create();
-        Topic::factory()->tecnicas()->create();
-        Topic::factory()->urgencia()->create();
-        Topic::factory()->auditorias()->create();
+        Topic::factory()->orientacion()->create(['notes' => "keywords: ['turno', 'consulta', 'ayuda']"]);
+        Topic::factory()->tecnicas()->create(['notes' => "keywords: ['sistema', 'equipo', 'error', 'impresora']"]);
+        Topic::factory()->urgencia()->create(['notes' => "keywords: ['hackear', 'hackeo', 'brecha', 'ataque']"]);
+        Topic::factory()->auditorias()->create(['notes' => "keywords: ['auditoria', 'revisión']"]);
     }
 
     private function createTicketWithBody(string $body, int $topicId = 16): Ticket
@@ -152,7 +160,7 @@ class TicketCategorizationCommandTest extends TestCase
     {
         $this->seedCategories();
         $this->writeJson([
-            ['id' => 1, 'body' => 'Hubo un hackeo masivo al sistema principal', 'expected' => 'Técnicas'],
+            ['id' => 1, 'body' => 'Hubo un hackeo masivo al servidor principal', 'expected' => 'Técnicas'],
         ]);
 
         $this->runJson();

@@ -34,8 +34,8 @@
 OSTICKET_URL="http://localhost:8080/api/http.php/tickets.json"
 OSTICKET_API_KEY="C6210A463085CFC451815ABFBD84C8D0"
 
-# URL del servidor Ollama (VPS Digital Ocean)
-OLLAMA_URL="206.189.192.107:11434"
+# URL del servidor Ollama
+OLLAMA_URL="http://206.189.192.107:11434"
 OLLAMA_MODEL="qwen2.5:0.5b"
 
 # Número de tópico general para la IA
@@ -115,6 +115,9 @@ APP_GENERAL_TOPIC=16
                 
                 <p class="text-xs text-gray-700 mb-2 italic">Requisito: Configurar el archivo <code>.env.test</code> en la raíz:</p>
                 <pre class="bg-gray-800 text-white p-4 rounded-lg overflow-x-auto text-xs mb-3">
+# URL de Ollama para pruebas (Local)
+OLLAMA_URL="http://localhost:11434"
+
 # Credenciales de Agente/Staff
 OSTICKET_EMAIL="agente@clinica.com"
 OSTICKET_PASSWORD="password_seguro"
