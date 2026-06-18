@@ -13,7 +13,7 @@ export default defineConfig({
     expect: { timeout: 10_000 },
     fullyParallel: false,
     retries: 0,  // Sin reintentos para debugging
-    reporter: [['list'], ['html', { outputFolder: 'storage/app/playwright-report', open: 'never' }]],
+    reporter: [['list'], ['html', { outputFolder: 'storage/app/public/playwright-report', open: 'never' }]],
 
     use: {
         baseURL: process.env.OSTICKET_URL ?? 'https://clinicaciberseguridad.equipoweb.cl',

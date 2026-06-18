@@ -33,6 +33,11 @@
             class="px-4 py-2 rounded-lg text-sm font-semibold transition {{ request()->is('reporte-experimentacion') ? 'bg-blue-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
                 Experimentación con IA
             </a>
+
+             <a href="/reporte-pruebas" 
+            class="px-4 py-2 rounded-lg text-sm font-semibold transition {{ request()->is('reporte-pruebas') ? 'bg-blue-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                Reportes de Pruebas
+            </a>
         </nav>
 
         <header class="border-b-2 border-blue-100 pb-8 mb-10">
