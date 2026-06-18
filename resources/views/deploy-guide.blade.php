@@ -142,10 +142,13 @@ OSTICKET_URL="http://localhost:8080"
         <p class="text-gray-700 mb-4">Para desplegar cambios, ejecuta en la terminal del servidor:</p>
         
         <div class="bg-gray-800 text-white p-6 rounded-lg space-y-4 font-mono text-sm">
-            <p class="text-blue-300"># 1. Traer cambios desde GitHub</p>
+            <p class="text-blue-300"># 1. Entrar al directorio de la aplicación</p>
+            <p>cd api</p>
+
+            <p class="text-blue-300 mt-4"># 2. Traer cambios desde GitHub</p>
             <p>git pull origin main</p>
             
-            <p class="text-blue-300 mt-4"># 2. Limpiar caché y aplicar migraciones</p>
+            <p class="text-blue-300 mt-4"># 3. Limpiar caché y aplicar migraciones</p>
             <p>php artisan cache:clear</p>
             <p>php artisan migrate</p>
         </div>
