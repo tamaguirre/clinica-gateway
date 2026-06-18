@@ -10,18 +10,28 @@
     <div class="max-w-5xl mx-auto bg-white p-8 md:p-12 shadow-xl rounded-2xl border border-gray-100">
         <nav class="flex gap-4 mb-8 border-b pb-4">
             <a href="/guia-operacion" 
-            class="px-4 py-2 rounded-lg font-semibold transition {{ request()->is('guia-operacion') ? 'bg-blue-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+            class="px-4 py-2 rounded-lg text-sm font-semibold transition {{ request()->is('guia-operacion') ? 'bg-blue-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
                 Guía de Operación
             </a>
             
             <a href="/manual-usuario" 
-            class="px-4 py-2 rounded-lg font-semibold transition {{ request()->is('manual-usuario') ? 'bg-blue-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+            class="px-4 py-2 rounded-lg text-sm font-semibold transition {{ request()->is('manual-usuario') ? 'bg-blue-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
                 Manual de Usuario
             </a>
             
             <a href="/guia-despliegue" 
-            class="px-4 py-2 rounded-lg font-semibold transition {{ request()->is('guia-despliegue') ? 'bg-blue-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+            class="px-4 py-2 rounded-lg text-sm font-semibold transition {{ request()->is('guia-despliegue') ? 'bg-blue-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
                 Guía de Despliegue
+            </a>
+
+            <a href="/fragmentos-codigo" 
+            class="px-4 py-2 rounded-lg text-sm font-semibold transition {{ request()->is('fragmentos-codigo') ? 'bg-blue-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                Fragmentos de Código
+            </a>
+
+             <a href="/reporte-experimentacion" 
+            class="px-4 py-2 rounded-lg text-sm font-semibold transition {{ request()->is('reporte-experimentacion') ? 'bg-blue-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                Reporte de Experimentación con IA
             </a>
         </nav>
 

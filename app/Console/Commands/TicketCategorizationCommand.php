@@ -12,7 +12,7 @@ use App\Models\Topic;
 use App\Models\TicketData;
 use App\Models\FormEntryValues;
 
-#[Signature('app:ticket-categorization {--from-json= : Ruta al JSON de tickets de prueba (omite escritura en BD)} {--driver=api : Driver de inferencia: api (HTTP local) o python (subprocess ollama SDK)} {--no-report : Omite la generación del reporte HTML (útil en tests)}')]
+#[Signature('app:ticket-categorization {--from-json= : Ruta al JSON de tickets de prueba} {--driver=api : Driver de inferencia} {--no-report : Omite el reporte HTML} {--debug : Muestra la respuesta en bruto de la IA} {--force-ai : Ignora las keywords y fuerza el uso de IA}')]
 #[Description('Categoriza tickets usando IA via Ollama')]
 class TicketCategorizationCommand extends Command
 {
@@ -45,6 +45,11 @@ class TicketCategorizationCommand extends Command
 
         foreach ($tickets as $ticket) {
             $entry = $ticket->thread?->firstEntry;
+            
+            // Si el ticket ya fue procesado y no es el tópico general, lo omitimos en modo normal
+            if ($ticket->topic_id != config('app.general_topic')) {
+                continue;
+            }
 
             if (!$entry) {
                 $this->warn("Ticket #{$ticket->ticket_id}: sin contenido, omitiendo.");
@@ -59,9 +64,9 @@ class TicketCategorizationCommand extends Command
 
             $systemPrompt = trim($systemPrompt);
 
-            $this->line("Ticket #{$ticket->ticket_id}: consultando...");
-
             $response = $this->chatWithIA($userPrompt, $systemPrompt);
+
+            if ($this->option('debug')) $this->info("Respuesta IA: " . ($response ?? 'NULL'));
 
             if ($response === null) {
                 $this->error("Ticket #{$ticket->ticket_id}: no se pudo obtener respuesta.");
@@ -175,11 +180,13 @@ class TicketCategorizationCommand extends Command
 
             // Detección por keywords
             $matchedByKeyword = null;
-            foreach ($keywords as $categoryName => $words) {
-                foreach ($words as $word) {
-                    if (str_contains($textoLower, $word)) {
-                        $matchedByKeyword = $categories->first(fn($cat) => $cat->topic === $categoryName);
-                        break 2;
+            if (!$this->option('force-ai')) {
+                foreach ($keywords as $categoryName => $words) {
+                    foreach ($words as $word) {
+                        if (str_contains($textoLower, $word)) {
+                            $matchedByKeyword = $categories->first(fn($cat) => $cat->topic === $categoryName);
+                            break 2;
+                        }
                     }
                 }
             }
@@ -201,8 +208,15 @@ class TicketCategorizationCommand extends Command
             $response = $this->chatWithIA($userPrompt, $systemPrompt);
             $aiTimeMs = round((microtime(true) - $aiStart) * 1000, 1);
 
+            if ($this->option('debug')) $this->info("Ticket #{$id} IA Raw: " . ($response ?? 'NULL'));
+
             if ($response === null) {
                 $this->error("Ticket #{$id}: no se pudo obtener respuesta de la IA.");
+                
+                if ($expected !== null) {
+                    $incorrect++; // Contamos el error de sistema como un fallo en la precisión
+                }
+
                 $results[] = [
                     'id'         => $id,
                     'preview'    => $texto,
@@ -238,6 +252,10 @@ class TicketCategorizationCommand extends Command
 
             if (!$matched) {
                 $this->warn("Ticket #{$id} → Categoría no reconocida: \"{$suggestedName}\".");
+                if ($expected !== null) {
+                    $incorrect++;
+                }
+
                 $results[] = [
                     'id'         => $id,
                     'preview'    => $texto,
@@ -732,19 +750,26 @@ HTML;
         // Ticket real enviado al final
         $messages[] = ['role' => 'user', 'content' => $message];
 
-        $response = Http::timeout(240)->withHeaders([
-            'Content-Type' => 'application/json',
-        ])->post(config('services.ollama.url', 'http://localhost:11434') . '/api/chat', [
-            'model'    => $model,
-            'messages' => $messages,
-            'options'  => [
-                'temperature' => 0.0,
-                'num_ctx'     => 2048,
-                'num_thread'  => 1,
-                'num_predict' => 20,
-            ],
-            'stream'   => false,
-        ]);
+        // Corrección de URL: Prioriza .env, luego config, luego localhost
+        $baseUrl = env('OLLAMA_URL') ?: (config('services.ollama.url') ?: 'http://localhost:11434');
+
+        try {
+            $response = Http::timeout(60)->withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post(rtrim($baseUrl, '/') . '/api/chat', [
+                'model'    => $model,
+                'messages' => $messages,
+                'options'  => [
+                    'temperature' => 0.0,
+                    'num_ctx'     => 1024,
+                    'num_predict' => 20,
+                ],
+                'stream'   => false,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Excepción al conectar con Ollama: ' . $e->getMessage());
+            return null;
+        }
 
         if (!$response->successful()) {
             Log::error('Error al conectar con la IA: ' . $response->body());

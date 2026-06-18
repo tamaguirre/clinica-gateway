@@ -63,7 +63,7 @@ APP_GENERAL_TOPIC=16
         <p class="text-gray-700 mb-4">Para validar el rendimiento y la precisión del modelo, el sistema permite realizar pruebas masivas mediante un dataset de entrenamiento/validación:</p>
         
         <code class="block bg-gray-100 p-3 rounded border font-mono text-sm">
-            php artisan app:ticket-categorization --from-json=storage/app/tickets-dataset.json --driver=[api|python]
+            php artisan app:ticket-categorization --from-json=storage/app/tickets-dataset.json --force-ai --debug
         </code>
         
         <div class="mt-6 space-y-4 text-gray-700">
