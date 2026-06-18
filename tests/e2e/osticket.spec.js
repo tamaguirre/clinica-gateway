@@ -38,8 +38,8 @@ test.describe('osTicket E2E - Autenticación y Tickets', () => {
     });
 
     test('Login exitoso', async ({ page }) => {
-        const email = process.env.OSTICKET_EMAIL || 'tamara';
-        const password = process.env.OSTICKET_PASSWORD || 'Tamara1234';
+        const email = process.env.OSTICKET_EMAIL;
+        const password = process.env.OSTICKET_PASSWORD;
 
         if (!email || !password) {
             throw new Error('Falta OSTICKET_EMAIL o OSTICKET_PASSWORD en las variables de entorno');
@@ -74,8 +74,8 @@ test.describe('osTicket E2E - Autenticación y Tickets', () => {
     });
 
     test('debe loguear y crear un ticket exitosamente', async ({ page }) => {
-        const email = process.env.OSTICKET_EMAIL || 'tamara';
-        const password = process.env.OSTICKET_PASSWORD || 'Tamara1234';
+        const email = process.env.OSTICKET_EMAIL;
+        const password = process.env.OSTICKET_PASSWORD;
 
         if (!email || !password) {
             throw new Error('Falta OSTICKET_EMAIL o OSTICKET_PASSWORD en las variables de entorno');
@@ -178,8 +178,8 @@ test.describe('osTicket E2E - Autenticación y Tickets', () => {
     });
 
     test('Creación de ticket fallida sin descripción', async ({ page }) => {
-        const email = process.env.OSTICKET_EMAIL || 'tamara';
-        const password = process.env.OSTICKET_PASSWORD || 'Tamara1234';
+        const email = process.env.OSTICKET_EMAIL;
+        const password = process.env.OSTICKET_PASSWORD;
 
         if (!email || !password) {
             throw new Error('Falta OSTICKET_EMAIL o OSTICKET_PASSWORD en las variables de entorno');
@@ -232,8 +232,8 @@ test.describe('osTicket E2E - Autenticación y Tickets', () => {
     });
 
     test('Visualizar y buscar ticket en listado', async ({ page }) => {
-        const email = process.env.OSTICKET_EMAIL || 'tamara';
-        const password = process.env.OSTICKET_PASSWORD || 'Tamara1234';
+        const email = process.env.OSTICKET_EMAIL;
+        const password = process.env.OSTICKET_PASSWORD;
 
         if (!email || !password) {
             throw new Error('Falta OSTICKET_EMAIL o OSTICKET_PASSWORD en las variables de entorno');
@@ -298,6 +298,58 @@ test.describe('osTicket E2E - Autenticación y Tickets', () => {
         expect(tickets).toBeGreaterThan(0);
     });
 
+    test('Acceso como administrador y verificación de menú admin', async ({ page }) => {
+        const adminUser = process.env.OSTICKET_ADMIN_USER;
+        const adminPass = process.env.OSTICKET_ADMIN_PASSWORD;
+
+        if (!adminUser || !adminPass) {
+            throw new Error('Faltan OSTICKET_ADMIN_USER o OSTICKET_ADMIN_PASSWORD en las variables de entorno');
+        }
+
+        // Paso 1: Navegar directamente a la página de login administrativo
+        await page.goto('/scp/login.php');
+        await page.waitForLoadState('networkidle');
+
+        // Paso 2: Llenar credenciales de admin
+        // En osTicket SCP los campos tienen los IDs #name y #pass
+        const userInput = page.locator('#name');
+        const passwordInput = page.locator('#pass');
+        
+        await userInput.waitFor({ state: 'visible', timeout: 5000 });
+        await userInput.fill(adminUser);
+        
+        await passwordInput.waitFor({ state: 'visible', timeout: 5000 });
+        await passwordInput.fill(adminPass);
+
+        // Paso 3: Presionar login
+        // Usamos un selector más flexible por si no es estrictamente type="submit"
+        const loginBtn = page.locator('input.submit, input[name="submit"], button[type="submit"], .submit').first();
+        await loginBtn.waitFor({ state: 'visible', timeout: 5000 });
+        await loginBtn.click();
+
+        // Paso 4: Capturar posibles errores de autenticación
+        const errorBox = page.locator('#header #msg_error, #loginBox .error');
+        if (await errorBox.isVisible({ timeout: 2000 }).catch(() => false)) {
+            const errorText = await errorBox.textContent();
+            console.error(`❌ Error de login detectado: ${errorText}`);
+            throw new Error(`Credenciales administrativas rechazadas: ${errorText}`);
+        }
+
+        // Paso 5: Verificar redirección exitosa al panel administrativo (Staff Panel)
+        // La URL debe ser /scp/ o /scp/index.php, pero NO /scp/login.php
+        await page.waitForURL(url => url.pathname.includes('/scp/') && !url.pathname.includes('login.php'), { 
+            timeout: 15000 
+        });
+        
+        // El selector '#nav' falló. Basado en el árbol de accesibilidad del sistema, 
+        // verificamos el contenedor de navegación y un botón clave del panel administrativo.
+        const staffNav = page.getByRole('navigation');
+        await expect(staffNav).toBeVisible({ timeout: 10000 });
+
+        // Verificamos que el botón "Panel de Control" esté presente, lo cual confirma el acceso staff
+        await expect(staffNav.getByRole('button', { name: /Panel de Control/i })).toBeVisible();
+        
+        console.log('✅ Acceso de administrador y visibilidad del menú admin verificados');
+    });
+
 });
-
-

@@ -8,6 +8,8 @@ Copia `.env.example` a `.env.test` (local) o configura las variables:
 ```bash
 export OSTICKET_EMAIL="tu-email@clinica.com"
 export OSTICKET_PASSWORD="tu-contraseña"
+export OSTICKET_ADMIN_USER="admin"
+export OSTICKET_ADMIN_PASSWORD="admin-password"
 export OSTICKET_URL="https://clinicaciberseguridad.equipoweb.cl"
 ```
 
