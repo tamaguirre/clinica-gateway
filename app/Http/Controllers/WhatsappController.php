@@ -25,7 +25,7 @@ class WhatsappController extends Controller
             $userData = UserData::with('user.email')->where('phone', $cleanPhone)->first();
 
             if (!$userData) {
-                return $this->twiml('No encontramos tu número registrado en el sistema. Por favor, comunicate con recepción.');
+                return $this->twiml('No encontramos tu número registrado en el sistema. Por favor, comunicate con nuestro equipo en contacto@udla.cl.');
             }
 
             $response = Http::timeout(10)->withHeaders([
