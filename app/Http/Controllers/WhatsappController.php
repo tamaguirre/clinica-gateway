@@ -35,7 +35,7 @@ class WhatsappController extends Controller
                 'email'   => $userData->user->email->address,
                 'subject' => 'Consulta vía WhatsApp: +' . $cleanPhone,
                 'message' => $body,
-                'topicId' => 16,
+                'topicId' => config('osticket.default_topic_id', 1),
             ]);
 
             if (!$response->successful()) {
