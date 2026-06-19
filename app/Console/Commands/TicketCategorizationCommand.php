@@ -20,7 +20,7 @@ class TicketCategorizationCommand extends Command
     {
         $categories = Topic::query()
             ->where('topic_id', '!=', config('app.general_topic'))
-            ->get(['topic_id', 'topic', 'sla_id', 'priority_id', 'notes']);
+            ->get(['topic_id', 'topic', 'sla_id', 'priority_id', 'notes', 'dept_id']);
 
         if ($categories->isEmpty()) {
             $this->error('No se encontraron categorías disponibles.');
@@ -125,6 +125,7 @@ class TicketCategorizationCommand extends Command
 
             // 3. Actualizar el ticket con la categoría encontrada
             $ticket->update([
+                'dept_id'  => $matched->dept_id,
                 'topic_id' => $matched->topic_id,
                 'sla_id'   => $matched->sla_id,
             ]);

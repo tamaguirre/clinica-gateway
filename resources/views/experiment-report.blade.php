@@ -67,7 +67,7 @@
         <h2 class="text-2xl font-bold text-blue-800 mb-4">Justificación Final</h2>
         <div class="bg-blue-50 p-6 rounded-xl border border-blue-200 space-y-4">
             <p class="text-gray-800 leading-relaxed">
-                Tras las pruebas realizadas, se determinó que <strong>Qwen 2.5 (0.5B)</strong> es el modelo idóneo para la clínica debido a su capacidad de comprender lenguaje técnico médico y administrativo con un consumo de recursos despreciable.
+                Tras las pruebas realizadas, se determinó que <strong>Qwen 2.5 (0.5B)</strong> es el modelo idóneo para la clínica debido a su capacidad de comprender lenguaje técnico y administrativo con un consumo de recursos despreciable.
             </p>
         </div>
     </section>
