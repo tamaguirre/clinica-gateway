@@ -27,6 +27,19 @@ class TicketCategorizationCommand extends Command
             return Command::FAILURE;
         }
 
+        // Extraer keywords desde el campo 'notes' de cada Topic
+        $keywords = $categories->pluck('notes', 'topic')
+            ->map(function ($notes) {
+                if (empty($notes) || !preg_match("/keywords:\s*\[(.*?)\]/s", $notes, $matches)) {
+                    return [];
+                }
+                preg_match_all("/['\"](.*?)['\"]/", $matches[1], $wordsMatches);
+                return $wordsMatches[1];
+            })
+            ->filter() // Eliminar categorías sin keywords
+            ->toArray();
+
+
         $jsonPath = $this->option('from-json');
         if ($jsonPath !== null) {
             return $this->processFromJson($jsonPath, $categories);
@@ -57,46 +70,60 @@ class TicketCategorizationCommand extends Command
             }
 
             $texto = strip_tags($entry->body ?? '');
-            
-            // Construcción dinámica del prompt basada en BD o Config
-            $systemPrompt = $this->buildSystemPrompt($categories);
-            $userPrompt   = $texto;
+            $textoLower = mb_strtolower($texto);
+            $matched = null;
+            $method = '';
 
-            $systemPrompt = trim($systemPrompt);
-
-            $response = $this->chatWithIA($userPrompt, $systemPrompt);
-
-            if ($this->option('debug')) $this->info("Respuesta IA: " . ($response ?? 'NULL'));
-
-            if ($response === null) {
-                $this->error("Ticket #{$ticket->ticket_id}: no se pudo obtener respuesta.");
-                continue;
-            }
-
-            $suggestedName = trim($response);
-            $matched = $categories->first(fn($cat) => strcasecmp($cat->topic, $suggestedName) === 0);
-
-            if (!$matched) {
-                $bestScore = 0;
-                $bestMatch = null;
-                foreach ($categories as $cat) {
-                    similar_text(mb_strtolower($suggestedName), mb_strtolower($cat->topic), $percent);
-                    if ($percent > $bestScore) {
-                        $bestScore = $percent;
-                        $bestMatch = $cat;
+            // 1. Detección por keywords
+            if (!$this->option('force-ai')) {
+                foreach ($keywords as $categoryName => $words) {
+                    foreach ($words as $word) {
+                        if (str_contains($textoLower, $word)) {
+                            $matched = $categories->first(fn($cat) => $cat->topic === $categoryName);
+                            $method = 'keyword';
+                            break 2;
+                        }
                     }
                 }
-                if ($bestScore >= 70) {
-                    $matched = $bestMatch;
-                    $this->warn("Ticket #{$ticket->ticket_id} → Coincidencia aproximada ({$bestScore}%): \"{$suggestedName}\" → \"{$matched->topic}\"");
+            }
+
+            // 2. Si no hay match por keyword, usar IA
+            if (!$matched) {
+                $method = 'AI';
+                $systemPrompt = $this->buildSystemPrompt($categories);
+                $response = $this->chatWithIA($texto, $systemPrompt);
+
+                if ($this->option('debug')) $this->info("Respuesta IA: " . ($response ?? 'NULL'));
+
+                if ($response === null) {
+                    $this->error("Ticket #{$ticket->ticket_id}: no se pudo obtener respuesta de la IA.");
+                    continue;
+                }
+
+                $suggestedName = trim($response);
+                $matched = $categories->first(fn($cat) => strcasecmp($cat->topic, $suggestedName) === 0);
+
+                if (!$matched) {
+                    $bestScore = 0;
+                    $bestMatch = null;
+                    foreach ($categories as $cat) {
+                        similar_text(mb_strtolower($suggestedName), mb_strtolower($cat->topic), $percent);
+                        if ($percent > $bestScore) {
+                            $bestScore = $percent;
+                            $bestMatch = $cat;
+                        }
+                    }
+                    if ($bestScore >= 70) {
+                        $matched = $bestMatch;
+                        $this->warn("Ticket #{$ticket->ticket_id} → Coincidencia aproximada ({$bestScore}%): \"{$suggestedName}\" → \"{$matched->topic}\"");
+                    } else {
+                        $this->warn("Ticket #{$ticket->ticket_id} → Categoría no reconocida: \"{$suggestedName}\". No se actualizó.");
+                        continue;
+                    }
                 }
             }
 
-            if (!$matched) {
-                $this->warn("Ticket #{$ticket->ticket_id} → Categoría no reconocida: \"{$suggestedName}\". No se actualizó.");
-                continue;
-            }
-
+            // 3. Actualizar el ticket con la categoría encontrada
             $ticket->update([
                 'topic_id' => $matched->topic_id,
                 'sla_id'   => $matched->sla_id,
@@ -116,7 +143,7 @@ class TicketCategorizationCommand extends Command
                 $formEntryValue->update(['value_id' => $matched->priority_id]);
             }
 
-            $this->info("Ticket #{$ticket->ticket_id} → Actualizado: topic={$matched->topic}, sla_id={$matched->sla_id}, priority_id={$matched->priority_id}");
+            $this->info("Ticket #{$ticket->ticket_id} [{$method}] → Actualizado: topic={$matched->topic}");
         }
 
         return Command::SUCCESS;
