@@ -35,6 +35,11 @@ return [
         ],
     ],
 
+    'os_ticket' => [
+        'api_key' => env('OSTICKET_API_KEY'),
+        'url' => env('OSTICKET_URL'),
+    ],
+
     'ollama' => [
         'url' => env('OLLAMA_URL', 'http://localhost:11434'),
         'model' => env('OLLAMA_MODEL', 'qwen2.5:0.5b'),

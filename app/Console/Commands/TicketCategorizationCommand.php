@@ -778,7 +778,7 @@ HTML;
         $messages[] = ['role' => 'user', 'content' => $message];
 
         // Corrección de URL: Prioriza .env, luego config, luego localhost
-        $baseUrl = env('OLLAMA_URL') ?: (config('services.ollama.url') ?: 'http://localhost:11434');
+        $baseUrl =config('services.ollama.url', 'http://localhost:11434');
 
         try {
             $response = Http::timeout(60)->withHeaders([

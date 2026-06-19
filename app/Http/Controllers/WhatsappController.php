@@ -29,13 +29,13 @@ class WhatsappController extends Controller
             }
 
             $response = Http::timeout(10)->withHeaders([
-                'X-API-Key' => env('OSTICKET_API_KEY'),
-            ])->post(env('OSTICKET_URL'), [
+                'X-API-Key' => config('services.os_ticket.api_key'),
+            ])->post(config('services.os_ticket.url'), [
                 'name'    => $userData->user->name,
                 'email'   => $userData->user->email->address,
                 'subject' => 'Consulta vía WhatsApp: +' . $cleanPhone,
                 'message' => $body,
-                'topicId' => config('osticket.default_topic_id', 1),
+                'topicId' => config('app.general_topic', 1),
             ]);
 
             if (!$response->successful()) {
