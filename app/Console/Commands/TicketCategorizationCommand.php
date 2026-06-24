@@ -129,7 +129,6 @@ class TicketCategorizationCommand extends Command
                 'dept_id'     => $matched->dept_id,
                 'topic_id'    => $matched->topic_id,
                 'sla_id'      => $matched->sla_id,
-                'priority_id' => $matched->priority_id
             ]);
 
             if ($ticket->ticketData) {
