@@ -19,8 +19,8 @@ class TicketCategorizationCommand extends Command
     public function handle()
     {
         $categories = Topic::query()
+            ->where('flags', 2)
             ->where('topic_id', '!=', config('app.general_topic'))
-            ->where('status_id', 1)
             ->get(['topic_id', 'topic', 'sla_id', 'priority_id', 'notes', 'dept_id']);
 
         if ($categories->isEmpty()) {
