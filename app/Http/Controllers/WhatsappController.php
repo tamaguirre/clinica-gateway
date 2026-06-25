@@ -12,6 +12,7 @@ class WhatsappController extends Controller
 {
     public function index(Request $request)
     {
+        // obtiene teléfono y texto de whatsapp
         $from = $request->input('From', '');
         $body = trim($request->input('Body', ''));
 
@@ -19,6 +20,7 @@ class WhatsappController extends Controller
 
         $cacheKey = 'whatsapp_state_' . $cleanPhone;
 
+        // verifica si el teléfono está en cache
         if (Cache::has($cacheKey)) {
             Cache::forget($cacheKey);
 
@@ -28,6 +30,7 @@ class WhatsappController extends Controller
                 return $this->twiml('No encontramos tu número registrado en el sistema. Por favor, comunicate con nuestro equipo en contacto@udla.cl.');
             }
 
+            // crear ticket mediante la API de OS ticket
             $response = Http::timeout(10)->withHeaders([
                 'X-API-Key' => config('services.os_ticket.api_key'),
             ])->post(config('services.os_ticket.url'), [
@@ -52,6 +55,7 @@ class WhatsappController extends Controller
         return $this->twiml('¡Hola! Soy el asistente de la clínica. Por favor, describe brevemente tu consulta y la registraremos como ticket.');
     }
 
+    // responder en formato twilio
     private function twiml(string $message): \Illuminate\Http\Response
     {
         $xml = '<?xml version="1.0" encoding="UTF-8"?><Response><Message>' . e($message) . '</Message></Response>';

@@ -11,10 +11,12 @@ class DashboardController extends Controller
 {
     public function index()
     {
+        // obtiene total, no categorizados y de hoy
         $total         = Ticket::count();
-        $uncategorized = Ticket::where('topic_id', 16)->count();
+        $uncategorized = Ticket::where('topic_id', config('app.general_topic'))->count();
         $today         = Ticket::whereDate('created', Carbon::today())->count();
 
+        // obtiene urgentes
         $urgency = Topic::where('topic', 'Urgencia')->first();
         $urgent  = $urgency ? Ticket::where('topic_id', $urgency->topic_id)->count() : 0;
 
@@ -26,7 +28,7 @@ class DashboardController extends Controller
         // Distribución por categoría (excluye sin categorizar)
         $byCategory = Ticket::query()
             ->join((new Topic)->getTable(), DB::raw("`$fT`.`topic_id`"), '=', DB::raw("`$fP`.`topic_id`"))
-            ->where(DB::raw("`$fT`.`topic_id`"), '!=', 16)
+            ->where(DB::raw("`$fT`.`topic_id`"), '!=', config('app.general_topic'))
             ->groupByRaw("`$fP`.`topic_id`, `$fP`.`topic`")
             ->selectRaw("`$fP`.`topic`, count(*) as total")
             ->orderByRaw('count(*) desc')

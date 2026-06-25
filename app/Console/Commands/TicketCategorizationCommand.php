@@ -18,6 +18,7 @@ class TicketCategorizationCommand extends Command
 {
     public function handle()
     {
+        // obtiene los topicos
         $categories = Topic::query()
             ->where('flags', 2)
             ->where('topic_id', '!=', config('app.general_topic'))
@@ -28,7 +29,7 @@ class TicketCategorizationCommand extends Command
             return Command::FAILURE;
         }
 
-        // Extraer keywords desde el campo 'notes' de cada Topic
+        // Extraer keywords desde el campo 'notes' de cada Topico
         $keywords = $categories->pluck('notes', 'topic')
             ->map(function ($notes) {
                 if (empty($notes) || !preg_match("/keywords:\s*\[(.*?)\]/s", $notes, $matches)) {
@@ -46,6 +47,7 @@ class TicketCategorizationCommand extends Command
             return $this->processFromJson($jsonPath, $categories);
         }
 
+        // obtener tickets con topico general
         $tickets = Ticket::with('thread.firstEntry', 'ticketData', 'formEntry.valueWithPriority')
             ->where('topic_id', config('app.general_topic'))
             ->get();
@@ -75,7 +77,7 @@ class TicketCategorizationCommand extends Command
             $matched = null;
             $method = '';
 
-            // 1. Detección por keywords
+            // 1. Detección por keywords, evitando pasar por IA
             if (!$this->option('force-ai')) {
                 foreach ($keywords as $categoryName => $words) {
                     foreach ($words as $word) {
