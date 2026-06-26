@@ -11,10 +11,10 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        // obtiene total, no categorizados y de hoy
-        $total         = Ticket::count();
-        $uncategorized = Ticket::where('topic_id', config('app.general_topic'))->count();
-        $today         = Ticket::whereDate('created', Carbon::today())->count();
+        // obtiene total, no procesados (pre-ia) y sin clasificar por ia (fallback)
+        $total    = Ticket::count();
+        $preAi    = Ticket::where('topic_id', config('app.general_topic'))->count();
+        $fallback = Ticket::where('topic_id', config('app.fallback_topic'))->count();
 
         // obtiene urgentes
         $urgency = Topic::where('topic', 'Urgencia')->first();
@@ -25,10 +25,10 @@ class DashboardController extends Controller
         $fT = $p . (new Ticket)->getTable();   // ej. ost_ticket
         $fP = $p . (new Topic)->getTable();    // ej. ost_help_topic
 
-        // Distribución por categoría (excluye sin categorizar)
+        // Distribución por categoría (excluye sin clasificar y pre-ia)
         $byCategory = Ticket::query()
             ->join((new Topic)->getTable(), DB::raw("`$fT`.`topic_id`"), '=', DB::raw("`$fP`.`topic_id`"))
-            ->where(DB::raw("`$fT`.`topic_id`"), '!=', config('app.general_topic'))
+            ->whereNotIn(DB::raw("`$fT`.`topic_id`"), [config('app.general_topic'), config('app.fallback_topic')])
             ->groupByRaw("`$fP`.`topic_id`, `$fP`.`topic`")
             ->selectRaw("`$fP`.`topic`, count(*) as total")
             ->orderByRaw('count(*) desc')
@@ -60,7 +60,7 @@ class DashboardController extends Controller
             ->get();
 
         return view('dashboard.index', [
-            'stats'       => compact('total', 'uncategorized', 'urgent', 'today'),
+            'stats'       => compact('total', 'preAi', 'fallback', 'urgent'),
             'byCategory'  => $byCategory,
             'dailyLabels' => $dailyLabels,
             'dailyData'   => $dailyData,

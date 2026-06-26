@@ -37,7 +37,7 @@
             </div>
         </div>
 
-        {{-- Sin categorizar --}}
+        {{-- Sin categorizar (Pre-IA) --}}
         <div class="bg-white rounded-xl border border-slate-200 p-5 flex items-start gap-4">
             <div class="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
                 <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -45,11 +45,29 @@
                 </svg>
             </div>
             <div class="min-w-0">
-                <p class="text-xs text-slate-500 uppercase tracking-wide font-medium">Sin categorizar</p>
-                <p class="text-3xl font-bold text-slate-800 mt-0.5">{{ number_format($stats['uncategorized']) }}</p>
+                <p class="text-xs text-slate-500 uppercase tracking-wide font-medium">Sin procesar (Pre-IA)</p>
+                <p class="text-3xl font-bold text-slate-800 mt-0.5">{{ number_format($stats['preAi']) }}</p>
                 @if ($stats['total'] > 0)
                     <p class="text-xs text-slate-400 mt-0.5">
-                        {{ round($stats['uncategorized'] / $stats['total'] * 100, 1) }}% del total
+                        {{ round($stats['preAi'] / $stats['total'] * 100, 1) }}% del total
+                    </p>
+                @endif
+            </div>
+        </div>
+
+        {{-- Sin clasificar (IA) --}}
+        <div class="bg-white rounded-xl border border-slate-200 p-5 flex items-start gap-4">
+            <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div class="min-w-0">
+                <p class="text-xs text-slate-500 uppercase tracking-wide font-medium">Sin clasificar (IA)</p>
+                <p class="text-3xl font-bold text-slate-800 mt-0.5">{{ number_format($stats['fallback']) }}</p>
+                @if ($stats['total'] > 0)
+                    <p class="text-xs text-slate-400 mt-0.5">
+                        {{ round($stats['fallback'] / $stats['total'] * 100, 1) }}% del total
                     </p>
                 @endif
             </div>
@@ -65,19 +83,6 @@
             <div class="min-w-0">
                 <p class="text-xs text-slate-500 uppercase tracking-wide font-medium">Urgencias</p>
                 <p class="text-3xl font-bold text-slate-800 mt-0.5">{{ number_format($stats['urgent']) }}</p>
-            </div>
-        </div>
-
-        {{-- Hoy --}}
-        <div class="bg-white rounded-xl border border-slate-200 p-5 flex items-start gap-4">
-            <div class="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-                <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                </svg>
-            </div>
-            <div class="min-w-0">
-                <p class="text-xs text-slate-500 uppercase tracking-wide font-medium">Hoy</p>
-                <p class="text-3xl font-bold text-slate-800 mt-0.5">{{ number_format($stats['today']) }}</p>
             </div>
         </div>
 
