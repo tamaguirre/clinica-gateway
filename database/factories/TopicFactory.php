@@ -18,6 +18,7 @@ class TopicFactory extends Factory
             'topic'       => fake()->randomElement(['Orientación', 'Técnicas', 'Urgencia', 'Auditorías']),
             'sla_id'      => 1,
             'priority_id' => 1,
+            'flags'       => Topic::ACTIVE,
         ];
     }
 

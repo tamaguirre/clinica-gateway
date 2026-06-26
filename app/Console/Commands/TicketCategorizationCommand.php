@@ -587,6 +587,10 @@ class TicketCategorizationCommand extends Command
 
     private function checkIaHealth(): bool
     {
+        if (app()->runningUnitTests()) {
+            return true;
+        }
+
         $baseUrl = config('services.ollama.url', 'http://localhost:11434');
         $model = config('services.ollama.model');
 

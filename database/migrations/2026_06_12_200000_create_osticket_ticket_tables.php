@@ -14,6 +14,8 @@ return new class extends Migration
             $table->string('topic');
             $table->unsignedInteger('sla_id')->default(1);
             $table->unsignedInteger('priority_id')->default(1);
+            $table->unsignedInteger('flags')->default(2);
+            $table->unsignedInteger('dept_id')->nullable();
             $table->timestamps();
         });
 
@@ -24,6 +26,7 @@ return new class extends Migration
             $table->unsignedInteger('topic_id')->default(16);
             $table->unsignedInteger('sla_id')->default(1);
             $table->unsignedTinyInteger('status_id')->default(1);
+            $table->unsignedInteger('dept_id')->nullable();
             $table->timestamp('created')->useCurrent();
             $table->timestamp('updated')->useCurrent()->useCurrentOnUpdate();
         });
