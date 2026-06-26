@@ -6,6 +6,7 @@ use App\Models\Ticket;
 use App\Models\Topic;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class DashboardController extends Controller
 {
@@ -59,12 +60,28 @@ class DashboardController extends Controller
             ->limit(15)
             ->get();
 
+        // Verificar si la IA está activa (Ollama)
+        $aiActive = false;
+        $baseUrl = config('services.ollama.url', 'http://localhost:11434');
+        $model = config('services.ollama.model');
+        try {
+            $response = Http::timeout(1.5)->post(rtrim($baseUrl, '/ ') . '/api/generate', [
+                'model'  => $model,
+                'prompt' => '',
+                'stream' => false,
+            ]);
+            $aiActive = $response->successful();
+        } catch (\Exception $e) {
+            $aiActive = false;
+        }
+
         return view('dashboard.index', [
             'stats'       => compact('total', 'preAi', 'fallback', 'urgent'),
             'byCategory'  => $byCategory,
             'dailyLabels' => $dailyLabels,
             'dailyData'   => $dailyData,
             'recent'      => $recent,
+            'aiActive'    => $aiActive,
         ]);
     }
 }

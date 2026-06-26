@@ -10,11 +10,30 @@
         <h1 class="text-lg font-semibold text-slate-800">Dashboard</h1>
         <p class="text-sm text-slate-500">Resumen del sistema de tickets</p>
     </div>
-    <div class="flex items-center gap-2 text-sm text-slate-500">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        {{ now()->format('d/m/Y H:i') }}
+    <div class="flex items-center gap-4 text-sm">
+        @if ($aiActive)
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span class="relative flex h-2 w-2">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                IA Online ({{ config('services.ollama.model') }})
+            </span>
+        @else
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200">
+                <span class="relative flex h-2 w-2">
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                </span>
+                IA Offline ({{ config('services.ollama.model') }})
+            </span>
+        @endif
+
+        <div class="flex items-center gap-2 text-slate-500">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            {{ now()->format('d/m/Y H:i') }}
+        </div>
     </div>
 </header>
 

@@ -13,6 +13,7 @@
             <li><a href="#benchmarking-reporte" class="text-blue-700 hover:underline flex items-center">5. Benchmarking y Reporte de IA</a></li>
             <li><a href="#pruebas-automatizadas" class="text-blue-700 hover:underline flex items-center">6. Pruebas Automatizadas</a></li>
             <li><a href="#repositorio-despliegue" class="text-blue-700 hover:underline flex items-center">7. Repositorio y Despliegue (Git + cPanel)</a></li>
+            <li><a href="#excepciones-whatsapp" class="text-blue-700 hover:underline flex items-center">8. Excepciones de Saludos en WhatsApp</a></li>
         </ul>
     </nav>
 
@@ -41,6 +42,8 @@ OLLAMA_MODEL="qwen2.5:0.5b"
 
 # Número de tópico general para la IA
 APP_GENERAL_TOPIC=16
+# Número de tópico para fallbacks (sin clasificar)
+APP_FALLBACK_TOPIC=17
         </pre>
     </section>
 
@@ -97,14 +100,36 @@ APP_GENERAL_TOPIC=16
         <h2 class="text-2xl font-bold text-blue-800 mb-4">4. Automatización de Categorización</h2>
         <p class="text-gray-700">El proceso de análisis por IA se ejecuta automáticamente mediante un <strong>Cron Job</strong> configurado en cPanel que se dispara cada <strong>1 minuto</strong> para gestionar las tareas programadas:</p>
         
-        <code class="block bg-gray-100 p-3 mt-2 rounded border font-mono text-sm">
+        <code class="block bg-gray-100 p-3 mt-2 rounded border font-mono text-sm mb-4">
             * * * * * cd /ruta/al/proyecto && php artisan schedule:run >> /dev/null 2>&1
         </code>
         
-        <p class="text-gray-700 mt-4">
+        <p class="text-gray-700 mb-6">
             Este comando ejecuta la lógica de categorización internamente. Recuerda que el driver por defecto es <code>api</code> (no requiere configuración adicional). Si deseas cambiarlo, puedes ajustar la configuración en el sistema; para otros drivers específicos como <code>python</code>, asegúrate de que el entorno tenga las dependencias necesarias.
         </p>
-        
+
+        <h3 class="font-bold text-gray-800 mb-2">A. Watchdog / Validación de Estado de la IA</h3>
+        <p class="text-gray-700 mb-4">
+            Para evitar errores en cadena y procesamiento erróneo de tickets si el servidor de Inteligencia Artificial (Ollama) está apagado o no responde, el comando implementa una validación activa inicial (<strong>Watchdog</strong>).
+        </p>
+        <p class="text-gray-700 mb-4">
+            Antes de categorizar los tickets, el watchdog realiza una petición de prueba al endpoint de Ollama. Si la IA no responde o devuelve un error, el comando cancela inmediatamente su ejecución y registra el error de manera segura, impidiendo que el sistema intente procesar tickets con un motor inactivo.
+        </p>
+
+        <h3 class="font-bold text-gray-800 mb-2">B. Tópico de Fallback (Tickets "Sin Clasificar")</h3>
+        <p class="text-gray-700 mb-4">
+            En caso de que un ticket no logre ser clasificado automáticamente, ya sea porque no coincide con ninguna palabra clave (<em>keywords</em>) o porque el modelo de IA no logra determinar una categoría reconocida, el sistema aplica un <strong>Fallback</strong>.
+        </p>
+        <p class="text-gray-700 mb-4">
+            El ticket es reasignado automáticamente al ID de tópico configurado en la variable:
+        </p>
+        <code class="block bg-gray-100 p-3 rounded border font-mono text-sm mb-4">
+            APP_FALLBACK_TOPIC=17
+        </code>
+        <p class="text-gray-700 mb-4">
+            Esto los deja bajo el estado de "Sin Clasificar" (o el nombre que defina el tópico en osTicket) para que los agentes puedan revisarlos y clasificarlos de forma manual en el panel de control.
+        </p>
+
         <img src="/img/cron-job.png" alt="Esquema de Automatización" class="w-full rounded-lg border-2 border-dashed mt-6">
     </section>
 
@@ -204,6 +229,48 @@ OSTICKET_URL="http://localhost:8080"
             <p class="text-blue-300 mt-4"># 3. Limpiar caché y aplicar migraciones</p>
             <p>php artisan cache:clear</p>
             <p>php artisan migrate</p>
+        </div>
+    </section>
+
+    <section id="excepciones-whatsapp" class="mb-12">
+        <h2 class="text-2xl font-bold text-blue-800 mb-4">8. Excepciones de Saludos en WhatsApp</h2>
+        <p class="text-gray-700 mb-4">
+            Para evitar la creación accidental de tickets vacíos o innecesarios cuando los usuarios envían un saludo repetitivo (ej: "hola", "buenos días") en lugar de detallar su consulta, el sistema utiliza un archivo de excepciones en formato JSON.
+        </p>
+        <p class="text-gray-700 mb-4">
+            El archivo debe ubicarse en la siguiente ruta dentro del servidor:
+        </p>
+        <code class="block bg-gray-100 p-3 rounded border font-mono text-sm mb-4">
+            storage/app/whatsapp-exceptions.json
+        </code>
+        <p class="text-gray-700 mb-4">
+            Este archivo contiene un array de strings en minúsculas con los saludos y expresiones que se desean ignorar en la segunda interacción:
+        </p>
+        <pre class="bg-gray-800 text-white p-6 rounded-lg overflow-x-auto text-sm">
+[
+    "hola",
+    "hola!",
+    "hola.",
+    "buenas",
+    "buenos días",
+    "buenos dias",
+    "buenas tardes",
+    "buenas noches",
+    "aló",
+    "alo",
+    "hey",
+    "buen día",
+    "buen dia",
+    "saludos",
+    "cómo estás",
+    "como estas",
+    "que tal",
+    "qué tal"
+]
+        </pre>
+        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200 mt-4 text-sm text-blue-800">
+            <strong>Nota:</strong>
+            Si el mensaje enviado por el usuario coincide con alguna de estas frases (de forma exacta y sin importar mayúsculas/minúsculas), el bot volverá a mostrar el mensaje de bienvenida instructivo y mantendrá el estado del chat activo, evitando así crear un ticket en osTicket.
         </div>
     </section>
 @endsection
