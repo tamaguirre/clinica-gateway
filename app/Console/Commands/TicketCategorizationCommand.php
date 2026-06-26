@@ -477,10 +477,11 @@ class TicketCategorizationCommand extends Command
         if (!empty($allExamples)) {
             $prompt .= "\nEJEMPLOS DE REFERENCIA:\n" . implode("\n", $allExamples) . "\n";
         }
-
+        
         $prompt .= "\nINSTRUCCIONES FINALES:\n";
-        $prompt .= "1. Si el ticket es basura o no es técnico, responde ÚNICAMENTE con la palabra: none\n";
-        $prompt .= "2. Tu respuesta debe ser de una sola palabra.\n";
+        $prompt .= "1. PRIORIDAD ABSOLUTA: Si el ticket es un saludo, una palabra ambigua (ej: 'oye', 'hola', 'qué tal'), no tiene contexto técnico claro o es basura, DEBES responder ÚNICAMENTE con la palabra: none.\n";
+        $prompt .= "2. RESPUESTA RESTRINGIDA: Tu respuesta debe ser EXCLUSIVAMENTE una palabra, sin puntos ni texto adicional.\n";
+        $prompt .= "3. Si tienes dudas sobre si un ticket pertenece a una categoría, clasifícalo como: none.\n";
 
         return $prompt;
     }
