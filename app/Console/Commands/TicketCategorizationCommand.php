@@ -20,13 +20,23 @@ class TicketCategorizationCommand extends Command
     {
         // obtiene los topicos
         $categories = Topic::query()
-            ->where('flags', 2)
-            ->where('topic_id', '!=', config('app.general_topic'))
+            ->where('flags', Topic::ACTIVE)
+            ->whereNotIn('topic_id', [config('app.general_topic'), config('app.fallback_topic')])
             ->get(['topic_id', 'topic', 'sla_id', 'priority_id', 'notes', 'dept_id']);
 
         if ($categories->isEmpty()) {
             $this->error('No se encontraron categorías disponibles.');
             return Command::FAILURE;
+        }
+
+        if ($this->option('driver') === 'api') {
+            $this->info('Ejecutando watchdog: Verificando disponibilidad de Ollama...');
+            if (!$this->checkIaHealth()) {
+                $this->error('CRÍTICO: El servicio de IA (Ollama) no está operativo o el modelo no responde. Cancelando ejecución.');
+                // Aquí podrías enviar un correo de alerta o notificación si fuera producción
+                return Command::FAILURE;
+            }
+            $this->info('Watchdog OK: La IA está respondiendo correctamente.');
         }
 
         // Extraer keywords desde el campo 'notes' de cada Topico
@@ -36,7 +46,7 @@ class TicketCategorizationCommand extends Command
                     return [];
                 }
                 preg_match_all("/['\"](.*?)['\"]/", $matches[1], $wordsMatches);
-                return $wordsMatches[1];
+                return array_map('mb_strtolower', $wordsMatches[1]);
             })
             ->filter() // Eliminar categorías sin keywords
             ->toArray();
@@ -100,6 +110,7 @@ class TicketCategorizationCommand extends Command
 
                 if ($response === null) {
                     $this->error("Ticket #{$ticket->ticket_id}: no se pudo obtener respuesta de la IA.");
+                    $this->applyFallback($ticket);
                     continue;
                 }
 
@@ -121,6 +132,7 @@ class TicketCategorizationCommand extends Command
                         $this->warn("Ticket #{$ticket->ticket_id} → Coincidencia aproximada ({$bestScore}%): \"{$suggestedName}\" → \"{$matched->topic}\"");
                     } else {
                         $this->warn("Ticket #{$ticket->ticket_id} → Categoría no reconocida: \"{$suggestedName}\". No se actualizó.");
+                        $this->applyFallback($ticket);
                         continue;
                     }
                 }
@@ -241,20 +253,22 @@ class TicketCategorizationCommand extends Command
 
             if ($this->option('debug')) $this->info("Ticket #{$id} IA Raw: " . ($response ?? 'NULL'));
 
-            if ($response === null) {
-                $this->error("Ticket #{$id}: no se pudo obtener respuesta de la IA.");
-                
+            if ($response === null) {                
                 if ($expected !== null) {
-                    $incorrect++; // Contamos el error de sistema como un fallo en la precisión
+                    $incorrect++;
                 }
+                
+                $assignedName = 'Sin Clasificar';
+                $isCorrect = ($expected !== null && strcasecmp($assignedName, $expected) === 0);
+                $okLabel   = ($expected === null) ? '-' : ($isCorrect ? '✓' : '✗');
 
                 $results[] = [
                     'id'         => $id,
                     'preview'    => $texto,
                     'expected'   => $expected,
-                    'assigned'   => null,
+                    'assigned'   => 'Sin Clasificar',
                     'method'     => $method,
-                    'ok'         => '✗',
+                    'ok'         => $okLabel,
                     'time_ms'    => round((microtime(true) - $ticketStart) * 1000, 1),
                     'ai_time_ms' => $aiTimeMs,
                 ];
@@ -277,12 +291,10 @@ class TicketCategorizationCommand extends Command
                 }
                 if ($bestScore >= 70) {
                     $matched = $bestMatch;
-                    $this->warn("Ticket #{$id} → Coincidencia aproximada ({$bestScore}%): \"{$suggestedName}\" → \"{$matched->topic}\"");
                 }
             }
 
             if (!$matched) {
-                $this->warn("Ticket #{$id} → Categoría no reconocida: \"{$suggestedName}\".");
                 if ($expected !== null) {
                     $incorrect++;
                 }
@@ -325,13 +337,24 @@ class TicketCategorizationCommand extends Command
 
         $this->newLine();
         $this->info('=== Resumen por categoría ===');
-        $byCategory = collect($results)->groupBy('assigned');
+        $resultsCollection = collect($results)->map(function ($item) {
+            if (empty($item['assigned'])) {
+                $item['assigned'] = 'Sin Clasificar';
+            }
+            return $item;
+        });
+        $byCategory = $resultsCollection->groupBy('assigned');
         $summaryRows = [];
         foreach ($byCategory as $cat => $group) {
             $correctInGroup = $group->filter(fn($r) => $r['ok'] === '✓')->count();
-            $totalInGroup   = $group->filter(fn($r) => $r['ok'] !== '-')->count();
-            $pct = $totalInGroup > 0 ? round($correctInGroup / $totalInGroup * 100, 1) . '%' : '-';
-            $summaryRows[] = [$cat ?? '?', $group->count(), $correctInGroup, $pct];
+            $totalExpectedInGroup = collect($results)
+                ->filter(fn($r) => $r['expected'] === $cat)
+                ->count();
+            $pct = $totalExpectedInGroup > 0 
+                ? round($correctInGroup / $totalExpectedInGroup * 100, 1) . '%' 
+                : '-';
+
+            $summaryRows[] = [$cat, $totalExpectedInGroup, $correctInGroup, $pct];
         }
         $this->table(['Categoría', 'Asignados', 'Correctos', 'Precisión'], $summaryRows);
 
@@ -426,7 +449,7 @@ class TicketCategorizationCommand extends Command
         $prompt .= "Responde ÚNICAMENTE con el nombre de la categoría. No añadas texto extra.\n\n";
         $prompt .= "CATEGORÍAS DISPONIBLES: [{$categoryNames}]\n\n";
         $prompt .= "REGLAS POR CATEGORÍA:\n";
-
+        
         $allExamples = [];
 
         foreach ($categories as $category) {
@@ -455,9 +478,9 @@ class TicketCategorizationCommand extends Command
             $prompt .= "\nEJEMPLOS DE REFERENCIA:\n" . implode("\n", $allExamples) . "\n";
         }
 
-        $prompt .= "\nINSTRUCCIÓN FINAL: Analiza el sentimiento y la intención. ";
-        $prompt .= "Si no estás seguro, elige la categoría más probable de la lista. ";
-        $prompt .= "Respuesta de una sola palabra:";
+        $prompt .= "\nINSTRUCCIONES FINALES:\n";
+        $prompt .= "1. Si el ticket es basura o no es técnico, responde ÚNICAMENTE con la palabra: none\n";
+        $prompt .= "2. Tu respuesta debe ser de una sola palabra.\n";
 
         return $prompt;
     }
@@ -481,6 +504,8 @@ class TicketCategorizationCommand extends Command
         // Corrección de URL: Prioriza .env, luego config, luego localhost
         $baseUrl =config('services.ollama.url', 'http://localhost:11434');
 
+
+        //timeout 1 min 
         try {
             $response = Http::timeout(60)->withHeaders([
                 'Content-Type' => 'application/json',
@@ -504,7 +529,13 @@ class TicketCategorizationCommand extends Command
             return null;
         }
 
-        return trim($response->json('message.content'));
+        $content = trim($response->json('message.content'));
+
+        if (strcasecmp($content, 'none') === 0 || empty($content)) {
+            return null;
+        }
+
+        return $content;
     }
 
     private function chatWithIAPython(string $message, string $systemPrompt = '', string $model = null): ?string
@@ -551,5 +582,31 @@ class TicketCategorizationCommand extends Command
         }
 
         return trim($output) ?: null;
+    }
+
+    private function checkIaHealth(): bool
+    {
+        $baseUrl = config('services.ollama.url', 'http://localhost:11434');
+        $model = config('services.ollama.model');
+
+        try {
+            $response = Http::timeout(15)->post(rtrim($baseUrl, '/') . '/api/generate', [
+                'model'  => $model,
+                'prompt' => '', 
+                'stream' => false,
+            ]);
+
+            return $response->successful();
+        } catch (\Exception $e) {
+            Log::warning('Watchdog detectó servicio Ollama caído o bloqueado: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    private function applyFallback($ticket)
+    {
+        $ticket->update([
+            'topic_id' => config('app.fallback_topic'),
+        ]);
     }
 }

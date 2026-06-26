@@ -123,6 +123,6 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
-    'general_topic' => env('APP_GENERAL_TOPIC', 16),
-
+    'general_topic' => env('APP_GENERAL_TOPIC'),
+    'fallback_topic' => env('APP_FALLBACK_TOPIC')
 ];

@@ -47,7 +47,7 @@ body{background:#f1f5f9;font-family:'Segoe UI',system-ui,sans-serif}
   </div></div>
   <div class="col-6 col-md-3"><div class="kpi" style="border-color:#16a34a">
     <div class="kpi-lbl">Precisión global</div>
-    <div class="kpi-val" style="color:#16a34a">{{ $stats['accuracy'] }}%</div>
+    <div class="kpi-val" id="global-precision" style="color:#16a34a">%</div>
     <div class="kpi-sub">{{ $stats['correct'] }} / {{ $evaluated }} evaluados</div>
   </div></div>
   <div class="col-6 col-md-3"><div class="kpi" style="border-color:#8b5cf6">
@@ -111,8 +111,7 @@ body{background:#f1f5f9;font-family:'Segoe UI',system-ui,sans-serif}
       <thead class="table-light">
         <tr>
           <th>Categoría</th>
-          <th class="text-center">Asignados</th>
-          <th class="text-center">Correctos</th>
+          <th class="text-center">Esperados</th> <th class="text-center">Correctos</th>
           <th class="text-center">Incorrectos</th>
           <th class="text-center">Precisión</th>
           <th class="text-center">T. prom. (ms)</th>
@@ -187,28 +186,41 @@ function buildCS(data){
 const CS=buildCS(RESULTS);
 
 /* Tabla por categoría */
-let fT=0,fC=0,fI=0;
-CATS.forEach(cat=>{
-  const s=CS[cat]||{total:0,correct:0,incorrect:0,times:[]};
-  const ev=s.correct+s.incorrect;
-  const acc=ev>0?(s.correct/ev*100).toFixed(1)+'%':'—';
-  const avgT=s.times.length>0?(s.times.reduce((a,b)=>a+b,0)/s.times.length).toFixed(1):'—';
-  const color=CLRS[cat]||CLRS['Default'];
-  const bar=ev>0?`<div class="progress mt-1" style="height:5px"><div class="progress-bar" style="width:${(s.correct/ev*100).toFixed(0)}%;background:${color}"></div></div>`:'';
-  document.getElementById('catBody').insertAdjacentHTML('beforeend',
-    `<tr><td><span class="badge text-white" style="background:${color}">${cat}</span></td>`+
-    `<td class="text-center fw-bold">${s.total}</td>`+
-    `<td class="text-center text-success fw-bold">${s.correct}</td>`+
-    `<td class="text-center text-danger">${s.incorrect}</td>`+
-    `<td style="min-width:120px"><span style="color:${color};font-weight:600">${acc}</span>${bar}</td>`+
-    `<td class="text-center text-muted small">${avgT}</td></tr>`
-  );
-  fT+=s.total;fC+=s.correct;fI+=s.incorrect;
+let fT = 0, fC = 0, fI = 0;
+const expectedTotals = {};
+RESULTS.forEach(r => {
+    const exp = r.expected === '-' ? 'Sin Clasificar' : r.expected;
+    if (!expectedTotals[exp]) expectedTotals[exp] = 0;
+    expectedTotals[exp]++;
+});
+CATS.forEach(cat => {
+    const s = CS[cat] || { total: 0, correct: 0, incorrect: 0, times: [] };
+    const totalExpected = expectedTotals[cat] || 0; // Este es nuestro denominador real
+    
+    // La precisión ahora se calcula sobre lo que DEBÍA ser
+    const acc = totalExpected > 0 ? (s.correct / totalExpected * 100).toFixed(1) + '%' : '—';
+    const avgT = s.times.length > 0 ? (s.times.reduce((a, b) => a + b, 0) / s.times.length).toFixed(1) : '—';
+    
+    const color = CLRS[cat] || CLRS['Default'];
+    
+    document.getElementById('catBody').insertAdjacentHTML('beforeend',
+        `<tr><td><span class="badge text-white" style="background:${color}">${cat}</span></td>` +
+        `<td class="text-center fw-bold">${totalExpected}</td>` + // Mostramos el esperado real
+        `<td class="text-center text-success fw-bold">${s.correct}</td>` +
+        `<td class="text-center text-danger">${totalExpected - s.correct}</td>` + // Incorrectos = Total - Correctos
+        `<td class="text-center"><span style="color:${color};font-weight:600">${acc}</span></td>` +
+        `<td class="text-center text-muted small">${avgT}</td></tr>`
+    );
+    
+    fT += totalExpected;
+    fC += s.correct;
+    fI += (totalExpected - s.correct);
 });
 document.getElementById('fT').textContent=fT;
 document.getElementById('fC').textContent=fC;
 document.getElementById('fI').textContent=fI;
 document.getElementById('fA').textContent=(fC+fI)>0?((fC/(fC+fI))*100).toFixed(1)+'%':'—';
+document.getElementById('global-precision').textContent = (fC+fI)>0?((fC/(fC+fI))*100).toFixed(1)+'%':'—';
 
 /* Tabla de resultados individuales */
 function render(data){

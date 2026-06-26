@@ -11,4 +11,6 @@ class Topic extends Model
 
     protected $table = 'help_topic';
     protected $primaryKey = 'topic_id';
+
+    const ACTIVE = 2;
 }
