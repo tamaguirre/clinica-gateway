@@ -271,5 +271,10 @@ new Chart(document.getElementById('chartDaily'), {
         plugins: { legend: { display: false } },
     },
 });
+
+// Auto-recarga del Dashboard cada 5 minutos (300,000 ms)
+setTimeout(() => {
+    window.location.reload();
+}, 300000);
 </script>
 @endpush
