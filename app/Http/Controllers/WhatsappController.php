@@ -22,6 +22,20 @@ class WhatsappController extends Controller
 
         // verifica si el teléfono está en cache
         if (Cache::has($cacheKey)) {
+            $exceptionsPath = storage_path('app/whatsapp-exceptions.json');
+            $exceptions = [];
+            if (file_exists($exceptionsPath)) {
+                $exceptions = json_decode(file_get_contents($exceptionsPath), true) ?: [];
+            }
+
+            $lowerBody = mb_strtolower($body);
+            $lowerExceptions = array_map('mb_strtolower', $exceptions);
+
+            if (in_array($lowerBody, $lowerExceptions, true)) {
+                Cache::put($cacheKey, true, now()->addMinutes(10));
+                return $this->twiml('¡Hola! Soy el asistente de la clínica. Por favor, describe brevemente tu consulta y la registraremos como ticket.');
+            }
+
             Cache::forget($cacheKey);
 
             $userData = UserData::with('user.email')->where('phone', $cleanPhone)->first();

@@ -173,4 +173,42 @@ class WhatsappApiTest extends TestCase
         $this->assertStringContainsString('<Response>', $response->getContent());
         $this->assertStringContainsString('asistente de la clínica', $response->getContent());
     }
+
+    public function test_second_message_with_greeting_exception_renews_cache_and_does_not_create_ticket(): void
+    {
+        $from  = 'whatsapp:+5491155667788';
+        $phone = $this->cleanPhone($from);
+
+        Cache::put("whatsapp_state_{$phone}", true, now()->addMinutes(10));
+        Http::fake();
+
+        $response = $this->post('/api/whatsapp', [
+            'From' => $from,
+            'Body' => 'Hola!',
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertStringContainsString('asistente de la clínica', $response->getContent());
+        $this->assertTrue(Cache::has("whatsapp_state_{$phone}"));
+        Http::assertNothingSent();
+    }
+
+    public function test_second_message_with_greeting_exception_case_insensitive(): void
+    {
+        $from  = 'whatsapp:+5491155667788';
+        $phone = $this->cleanPhone($from);
+
+        Cache::put("whatsapp_state_{$phone}", true, now()->addMinutes(10));
+        Http::fake();
+
+        $response = $this->post('/api/whatsapp', [
+            'From' => $from,
+            'Body' => 'BUENOS DÍAS',
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertStringContainsString('asistente de la clínica', $response->getContent());
+        $this->assertTrue(Cache::has("whatsapp_state_{$phone}"));
+        Http::assertNothingSent();
+    }
 }
