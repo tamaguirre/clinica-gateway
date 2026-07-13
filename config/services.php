@@ -45,4 +45,8 @@ return [
         'model' => env('OLLAMA_MODEL', 'qwen2.5:0.5b'),
     ],
 
+    'twilio' => [
+        'auth_token' => env('TWILIO_AUTH_TOKEN'),
+    ],
+
 ];
