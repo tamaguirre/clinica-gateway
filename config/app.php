@@ -124,5 +124,6 @@ return [
     ],
 
     'general_topic' => env('APP_GENERAL_TOPIC'),
-    'fallback_topic' => env('APP_FALLBACK_TOPIC')
+    'fallback_topic' => env('APP_FALLBACK_TOPIC'),
+    'dashboard_token' => env('DASHBOARD_TOKEN'),
 ];

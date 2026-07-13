@@ -30,7 +30,7 @@
 
             <p class="px-3 pt-1 pb-2 text-slate-500 text-xs font-semibold uppercase tracking-wider">Principal</p>
 
-            <a href="{{ route('dashboard') }}"
+            <a href="{{ route('dashboard', ['token' => request('token')]) }}"
                class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
                       {{ request()->routeIs('dashboard') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
@@ -41,7 +41,7 @@
 
             <p class="px-3 pt-4 pb-2 text-slate-500 text-xs font-semibold uppercase tracking-wider">Inteligencia</p>
 
-            <a href="/ticket-report" target="_blank"
+            <a href="/ticket-report?token={{ request('token') }}" target="_blank"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>

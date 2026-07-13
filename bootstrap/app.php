@@ -18,7 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 }
                 return response(file_get_contents($path), 200)
                     ->header('Content-Type', 'text/html; charset=UTF-8');
-            });
+            })->middleware('dashboard.token');
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -26,6 +26,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/whatsapp',
         ]);
 
+        $middleware->alias([
+            'dashboard.token' => \App\Http\Middleware\VerifyDashboardToken::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->shouldRenderJsonWhen(function (\Illuminate\Http\Request $request, \Throwable $e) {

@@ -9,32 +9,32 @@
 <body class="bg-gray-50 p-6 md:p-12">
     <div class="max-w-5xl mx-auto bg-white p-8 md:p-12 shadow-xl rounded-2xl border border-gray-100">
         <nav class="flex gap-4 mb-8 border-b pb-4">
-            <a href="/guia-operacion" 
+            <a href="/guia-operacion?token={{ request('token') }}" 
             class="px-4 py-2 rounded-lg text-sm font-semibold transition {{ request()->is('guia-operacion') ? 'bg-blue-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
                 Guía de Operación
             </a>
             
-            <a href="/manual-usuario" 
+            <a href="/manual-usuario?token={{ request('token') }}" 
             class="px-4 py-2 rounded-lg text-sm font-semibold transition {{ request()->is('manual-usuario') ? 'bg-blue-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
                 Manual de Usuario
             </a>
             
-            <a href="/guia-despliegue" 
+            <a href="/guia-despliegue?token={{ request('token') }}" 
             class="px-4 py-2 rounded-lg text-sm font-semibold transition {{ request()->is('guia-despliegue') ? 'bg-blue-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
                 Guía de Despliegue
             </a>
 
-            <a href="/fragmentos-codigo" 
+            <a href="/fragmentos-codigo?token={{ request('token') }}" 
             class="px-4 py-2 rounded-lg text-sm font-semibold transition {{ request()->is('fragmentos-codigo') ? 'bg-blue-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
                 Fragmentos de Código
             </a>
 
-             <a href="/reporte-experimentacion" 
+             <a href="/reporte-experimentacion?token={{ request('token') }}" 
             class="px-4 py-2 rounded-lg text-sm font-semibold transition {{ request()->is('reporte-experimentacion') ? 'bg-blue-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
                 Experimentación con IA
             </a>
 
-             <a href="/reporte-pruebas" 
+             <a href="/reporte-pruebas?token={{ request('token') }}" 
             class="px-4 py-2 rounded-lg text-sm font-semibold transition {{ request()->is('reporte-pruebas') ? 'bg-blue-800 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
                 Reportes de Pruebas
             </a>
