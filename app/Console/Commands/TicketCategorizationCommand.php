@@ -69,6 +69,9 @@ class TicketCategorizationCommand extends Command
 
         $this->info("Se encontraron {$tickets->count()} tickets. Categorizando...");
 
+        $iaTotalCount = 0;
+        $iaCategoryCounts = [];
+
         foreach ($tickets as $ticket) {
             $entry = $ticket->thread?->firstEntry;
             
@@ -103,6 +106,7 @@ class TicketCategorizationCommand extends Command
             // 2. Si no hay match por keyword, usar IA
             if (!$matched) {
                 $method = 'AI';
+                $iaTotalCount++;
                 $systemPrompt = $this->buildSystemPrompt($categories);
                 $response = $this->chatWithIA($texto, $systemPrompt);
 
@@ -111,6 +115,7 @@ class TicketCategorizationCommand extends Command
                 if ($response === null) {
                     $this->error("Ticket #{$ticket->ticket_id}: no se pudo obtener respuesta de la IA.");
                     $this->applyFallback($ticket);
+                    $iaCategoryCounts['fallback'] = ($iaCategoryCounts['fallback'] ?? 0) + 1;
                     continue;
                 }
 
@@ -133,9 +138,12 @@ class TicketCategorizationCommand extends Command
                     } else {
                         $this->warn("Ticket #{$ticket->ticket_id} → Categoría no reconocida: \"{$suggestedName}\". No se actualizó.");
                         $this->applyFallback($ticket);
+                        $iaCategoryCounts['fallback'] = ($iaCategoryCounts['fallback'] ?? 0) + 1;
                         continue;
                     }
                 }
+
+                $iaCategoryCounts[$matched->topic] = ($iaCategoryCounts[$matched->topic] ?? 0) + 1;
             }
 
             // 3. Actualizar el ticket con la categoría encontrada
@@ -160,6 +168,23 @@ class TicketCategorizationCommand extends Command
             }
 
             $this->info("Ticket #{$ticket->ticket_id} [{$method}] → Actualizado: topic={$matched->topic}");
+        }
+
+        if ($iaTotalCount > 0) {
+            $collapsed = false;
+            foreach ($iaCategoryCounts as $category => $count) {
+                $percentage = ($count / $iaTotalCount) * 100;
+                if ($percentage > 80) {
+                    $warningMsg = "Alerta: Posible degradación del clasificador IA (Colapso de Modo). El " . round($percentage, 1) . "% ({$count}/{$iaTotalCount}) de los tickets clasificados por la IA en esta tanda fueron asignados a '{$category}'.";
+                    Log::warning($warningMsg);
+                    \Illuminate\Support\Facades\Cache::put('model_mode_collapse_warning', $warningMsg, now()->addDays(7));
+                    $collapsed = true;
+                    break;
+                }
+            }
+            if (!$collapsed) {
+                \Illuminate\Support\Facades\Cache::forget('model_mode_collapse_warning');
+            }
         }
 
         return Command::SUCCESS;
@@ -206,6 +231,9 @@ class TicketCategorizationCommand extends Command
         $incorrect = 0;
         $noMatch   = 0;
 
+        $iaTotalCount = 0;
+        $iaCategoryCounts = [];
+
         foreach ($tickets as $ticket) {
             $ticketStart = microtime(true);
             $aiTimeMs    = 0.0;
@@ -239,6 +267,7 @@ class TicketCategorizationCommand extends Command
                 $matched = $matchedByKeyword;
             } else {
                 $method  = 'AI';
+                $iaTotalCount++;
                 $matched = null;
 
             $systemPrompt = $this->buildSystemPrompt($categories);
@@ -261,6 +290,7 @@ class TicketCategorizationCommand extends Command
                 $assignedName = 'Sin Clasificar';
                 $isCorrect = ($expected !== null && strcasecmp($assignedName, $expected) === 0);
                 $okLabel   = ($expected === null) ? '-' : ($isCorrect ? '✓' : '✗');
+                $iaCategoryCounts['fallback'] = ($iaCategoryCounts['fallback'] ?? 0) + 1;
 
                 $results[] = [
                     'id'         => $id,
@@ -298,6 +328,7 @@ class TicketCategorizationCommand extends Command
                 if ($expected !== null) {
                     $incorrect++;
                 }
+                $iaCategoryCounts['fallback'] = ($iaCategoryCounts['fallback'] ?? 0) + 1;
 
                 $results[] = [
                     'id'         => $id,
@@ -313,6 +344,10 @@ class TicketCategorizationCommand extends Command
                 continue;
             }
             } // end else (AI)
+
+            if ($method === 'AI') {
+                $iaCategoryCounts[$matched->topic] = ($iaCategoryCounts[$matched->topic] ?? 0) + 1;
+            }
 
             $isCorrect = $expected !== null && strcasecmp($matched->topic, $expected) === 0;
             $okLabel   = $expected === null ? '-' : ($isCorrect ? '✓' : '✗');
@@ -333,6 +368,23 @@ class TicketCategorizationCommand extends Command
                 'time_ms'    => round((microtime(true) - $ticketStart) * 1000, 1),
                 'ai_time_ms' => $aiTimeMs,
             ];
+        }
+
+        if ($iaTotalCount > 0) {
+            $collapsed = false;
+            foreach ($iaCategoryCounts as $category => $count) {
+                $percentage = ($count / $iaTotalCount) * 100;
+                if ($percentage > 80) {
+                    $warningMsg = "Alerta: Posible degradación del clasificador IA (Colapso de Modo). El " . round($percentage, 1) . "% ({$count}/{$iaTotalCount}) de los tickets clasificados por la IA en esta tanda fueron asignados a '{$category}'.";
+                    Log::warning($warningMsg);
+                    \Illuminate\Support\Facades\Cache::put('model_mode_collapse_warning', $warningMsg, now()->addDays(7));
+                    $collapsed = true;
+                    break;
+                }
+            }
+            if (!$collapsed) {
+                \Illuminate\Support\Facades\Cache::forget('model_mode_collapse_warning');
+            }
         }
 
         $this->newLine();

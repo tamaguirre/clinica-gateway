@@ -75,13 +75,16 @@ class DashboardController extends Controller
             $aiActive = false;
         }
 
+        $modeCollapseWarning = \Illuminate\Support\Facades\Cache::get('model_mode_collapse_warning');
+
         return view('dashboard.index', [
-            'stats'       => compact('total', 'preAi', 'fallback', 'urgent'),
-            'byCategory'  => $byCategory,
-            'dailyLabels' => $dailyLabels,
-            'dailyData'   => $dailyData,
-            'recent'      => $recent,
-            'aiActive'    => $aiActive,
+            'stats'               => compact('total', 'preAi', 'fallback', 'urgent'),
+            'byCategory'          => $byCategory,
+            'dailyLabels'         => $dailyLabels,
+            'dailyData'           => $dailyData,
+            'recent'              => $recent,
+            'aiActive'            => $aiActive,
+            'modeCollapseWarning' => $modeCollapseWarning,
         ]);
     }
 }
