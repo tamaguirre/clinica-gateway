@@ -570,12 +570,74 @@ class TicketCategorizationCommand extends Command
         fwrite($pipes[0], $payload);
         fclose($pipes[0]);
 
-        $output   = stream_get_contents($pipes[1]);
-        $stderr   = stream_get_contents($pipes[2]);
+        // Evitar bloqueo indefinido: ponemos los streams en modo no bloqueante
+        stream_set_blocking($pipes[1], false);
+        stream_set_blocking($pipes[2], false);
+
+        $output = '';
+        $stderr = '';
+        $timeout = 90; // Límite de 90 segundos
+        $start = time();
+        $isTimedOut = false;
+
+        while (true) {
+            $read = [$pipes[1], $pipes[2]];
+            $write = null;
+            $except = null;
+
+            // Esperar actividad en los pipes (tiempo límite de 1 segundo por llamada a select)
+            $changed = stream_select($read, $write, $except, 1, 0);
+
+            if ($changed === false) {
+                break;
+            }
+
+            if ($changed > 0) {
+                foreach ($read as $stream) {
+                    if ($stream === $pipes[1]) {
+                        $chunk = fread($pipes[1], 8192);
+                        if ($chunk !== false) {
+                            $output .= $chunk;
+                        }
+                    } elseif ($stream === $pipes[2]) {
+                        $chunk = fread($pipes[2], 8192);
+                        if ($chunk !== false) {
+                            $stderr .= $chunk;
+                        }
+                    }
+                }
+            }
+
+            $status = proc_get_status($process);
+            
+            // Si el proceso ya terminó, leemos el remanente y salimos
+            if (!$status['running']) {
+                $chunk1 = fread($pipes[1], 8192);
+                if ($chunk1 !== false) $output .= $chunk1;
+                $chunk2 = fread($pipes[2], 8192);
+                if ($chunk2 !== false) $stderr .= $chunk2;
+                break;
+            }
+
+            // Comprobar si se alcanzó el límite de 90 segundos
+            if ((time() - $start) > $timeout) {
+                $isTimedOut = true;
+                Log::error("El proceso alternativo Python superó el límite de tiempo de {$timeout} segundos y fue abortado.");
+                proc_terminate($process);
+                break;
+            }
+
+            usleep(10000); // 10ms
+        }
+
         fclose($pipes[1]);
         fclose($pipes[2]);
 
         $exitCode = proc_close($process);
+
+        if ($isTimedOut) {
+            return null;
+        }
 
         if ($exitCode !== 0) {
             Log::error("Python exit({$exitCode}): {$stderr}");
