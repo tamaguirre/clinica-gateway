@@ -16,7 +16,7 @@ export default defineConfig({
     reporter: [['list'], ['html', { outputFolder: 'storage/app/public/playwright-report', open: 'never' }]],
 
     use: {
-        baseURL: process.env.OSTICKET_URL ?? 'https://clinicaciberseguridad.equipoweb.cl',
+        baseURL: process.env.OSTICKET_URL ?? 'https://your-osticket-domain.com',
         screenshot: 'only-on-failure',
         video: 'off',
         headless: true,

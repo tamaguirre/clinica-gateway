@@ -558,27 +558,43 @@ class TicketCategorizationCommand extends Command
         $baseUrl =config('services.ollama.url', 'http://localhost:11434');
 
 
-        //timeout 1 min 
-        try {
-            $response = Http::timeout(60)->withHeaders([
-                'Content-Type' => 'application/json',
-            ])->post(rtrim($baseUrl, '/') . '/api/chat', [
-                'model'    => $model,
-                'messages' => $messages,
-                'options'  => [
-                    'temperature' => 0.0,
-                    'num_ctx'     => 1024,
-                    'num_predict' => 20,
-                ],
-                'stream'   => false,
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Excepción al conectar con Ollama: ' . $e->getMessage());
-            return null;
+        // Reintento único con espera de 2s para fallas transitorias de red u Ollama
+        $maxRetries = 2;
+        $attempt = 1;
+        $response = null;
+
+        while ($attempt <= $maxRetries) {
+            try {
+                $response = Http::timeout(60)->withHeaders([
+                    'Content-Type' => 'application/json',
+                ])->post(rtrim($baseUrl, '/') . '/api/chat', [
+                    'model'    => $model,
+                    'messages' => $messages,
+                    'options'  => [
+                        'temperature' => 0.0,
+                        'num_ctx'     => 1024,
+                        'num_predict' => 20,
+                    ],
+                    'stream'   => false,
+                ]);
+
+                if ($response->successful()) {
+                    break;
+                }
+
+                Log::warning("Intento {$attempt} fallido al conectar con Ollama (HTTP {$response->status()}).");
+            } catch (\Exception $e) {
+                Log::warning("Intento {$attempt} fallido con excepción al conectar con Ollama: " . $e->getMessage());
+            }
+
+            $attempt++;
+            if ($attempt <= $maxRetries) {
+                sleep(2); // Esperar 2 segundos antes del reintento
+            }
         }
 
-        if (!$response->successful()) {
-            Log::error('Error al conectar con la IA: ' . $response->body());
+        if (!$response || !$response->successful()) {
+            Log::error('Fallo definitivo tras reintentar conectar con la IA.');
             return null;
         }
 
